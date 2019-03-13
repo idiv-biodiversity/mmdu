@@ -1,0 +1,24 @@
+[package]
+name = "mmdu"
+version = "0.1.0"
+authors = ["Christian Krause <christian.krause@mailbox.org>"]
+description = "disk usage for IBM Spectrum Scale file systems"
+license = "GPL-3.0-or-later"
+readme = "README.md"
+documentation = "https://github.com/idiv-biodiversity/mmdu"
+homepage = "https://github.com/idiv-biodiversity/mmdu"
+repository = "https://github.com/idiv-biodiversity/mmdu"
+keywords = ["disk", "usage", "gpfs"]
+categories = ["command-line-utilities", "filesystem"]
+edition = "2018"
+
+[dependencies]
+atty = "^0.2"
+bytesize = "^1"
+lazy_static = "^1"
+mktemp = "^0.3"
+regex = "^1"
+
+[dependencies.clap]
+version = "^2"
+features = ["wrap_help"]
