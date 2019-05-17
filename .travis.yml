@@ -6,13 +6,25 @@ dist: trusty
 language: rust
 
 rust:
-  - stable
   - beta
   - nightly
 
 matrix:
+  include:
+    - os: linux
+      rust: stable
+      install:
+        - rustup component add clippy
+        - rustup component add rustfmt
+      script:
+        - cargo clippy -- -D warnings
+        - cargo fmt -- --check
+        - cargo test --verbose
   allow_failures:
     - rust: nightly
+
+script:
+  - cargo test --verbose
 
 cache: cargo
 
