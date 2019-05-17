@@ -38,7 +38,7 @@ impl Config {
             .map(|x| x.parse::<usize>().unwrap())
             .filter(|depth| *depth > 0);
 
-        let nodes = args.value_of("nodes").map(|n| String::from(n));
+        let nodes = args.value_of("nodes").map(String::from);
 
         Config {
             debug: args.is_present("debug"),

@@ -40,8 +40,7 @@ lazy_static! {
 pub fn size(file: &PathBuf) -> io::Result<()> {
     let mut file = File::create(file)?;
 
-    let content = format!(
-        "
+    let content = "
 RULE
   EXTERNAL LIST 'size'
   EXEC ''
@@ -50,8 +49,7 @@ RULE 'TOTAL'
   LIST 'size'
   DIRECTORIES_PLUS
   SHOW(VARCHAR(FILE_SIZE))
-"
-    );
+";
 
     file.write_all(content.as_bytes())?;
 

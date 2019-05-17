@@ -170,7 +170,7 @@ fn sum_depth(
                 dir_sums
                     .entry(prefix)
                     .and_modify(|x| *x += (1u64, size))
-                    .or_insert(Acc::new(1, size));
+                    .or_insert_with(|| Acc::new(1, size));
             }
         }
     }
