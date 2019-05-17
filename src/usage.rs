@@ -23,7 +23,6 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-
 use mktemp::Temp;
 use std::collections::BTreeMap;
 use std::fs::File;
@@ -76,7 +75,7 @@ pub fn run(dir: &str, config: &Config) -> io::Result<()> {
     } else {
         Err(io::Error::new(
             io::ErrorKind::Other,
-            "mmapplypolicy unsuccessful"
+            "mmapplypolicy unsuccessful",
         ))
     }
 }
@@ -97,12 +96,12 @@ fn sum_consume(dir: &str, report: PathBuf, config: &Config) -> io::Result<()> {
                     output(dir.to_str().unwrap(), *size);
                 }
             }
-        },
+        }
 
         None => {
             let size = sum_total(&report).unwrap();
             output(dir, size);
-        },
+        }
     };
 
     Ok(())
@@ -130,7 +129,12 @@ impl AddAssign<(u64, u64)> for Acc {
     }
 }
 
-fn sum_depth(dir: &str, depth: usize, report: &Path, config: &Config) -> io::Result<BTreeMap<PathBuf, Acc>> {
+fn sum_depth(
+    dir: &str,
+    depth: usize,
+    report: &Path,
+    config: &Config,
+) -> io::Result<BTreeMap<PathBuf, Acc>> {
     let report = File::open(report)?;
 
     let mut dir_sums = BTreeMap::new();
@@ -140,7 +144,8 @@ fn sum_depth(dir: &str, depth: usize, report: &Path, config: &Config) -> io::Res
         if line.is_err() {
             log::error(&format!(
                 "{}: dropping line from policy report, result will be \
-                 incorrect ({:?})", dir, line
+                 incorrect ({:?})",
+                dir, line
             ));
 
             continue;
@@ -157,13 +162,13 @@ fn sum_depth(dir: &str, depth: usize, report: &Path, config: &Config) -> io::Res
             log::debug(&format!("path: {:?}", path), config);
 
             for depth in 0..=depth.min(path_suffix_depth) {
-                let prefix: PathBuf = path.iter()
-                    .take(prefix_depth + depth)
-                    .collect();
+                let prefix: PathBuf =
+                    path.iter().take(prefix_depth + depth).collect();
 
                 log::debug(&format!("prefix: {:?}", prefix), config);
 
-                dir_sums.entry(prefix)
+                dir_sums
+                    .entry(prefix)
                     .and_modify(|x| *x += (1u64, size))
                     .or_insert(Acc::new(1, size));
             }

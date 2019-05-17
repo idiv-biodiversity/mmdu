@@ -23,7 +23,6 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-
 use bytesize::ByteSize;
 
 pub fn output(dir: &str, size: u64) {

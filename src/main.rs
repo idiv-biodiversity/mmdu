@@ -23,7 +23,6 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-
 extern crate atty;
 extern crate bytesize;
 #[macro_use]
@@ -55,7 +54,7 @@ fn main() {
             for dir in dirs {
                 run(dir, &config);
             }
-        },
+        }
 
         None => {
             let interactive = atty::is(Stream::Stdin);
@@ -75,7 +74,7 @@ fn main() {
                 let dir = &line.unwrap();
                 run(dir, &config);
             }
-        },
+        }
     }
 }
 
@@ -84,9 +83,7 @@ fn run(dir: &str, config: &Config) {
 
     match result {
         Err(error) => {
-            log::error(
-                &format!("skipping directory {}: {}", dir, error)
-            );
+            log::error(&format!("skipping directory {}: {}", dir, error));
         }
 
         Ok(()) => (),

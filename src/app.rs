@@ -23,7 +23,6 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-
 use atty::Stream;
 use clap::{App, AppSettings, Arg, ArgMatches};
 use regex::Regex;
@@ -46,41 +45,57 @@ pub fn args() -> ArgMatches<'static> {
         .help_short("?")
         .help_message("show this help output")
         .version_message("show version")
-        .arg(Arg::with_name("dir")
-             .help("input directories")
-             .long_help("The input directories for which to gather \
-                         information. If none are given, directories are read \
-                         from standard input.")
-             .validator(is_dir)
-             .multiple(true))
-        .arg(Arg::with_name("debug")
-             .hidden(true)
-             .long("debug")
-             .help("debug output")
-             .display_order(2))
-        .arg(Arg::with_name("max-depth")
-             .short("d")
-             .long("max-depth")
-             .takes_value(true)
-             .value_name("DEPTH")
-             .help("output sub-directory depth")
-             .long_help("Show the size of each sub-directory up to the given \
-                         depth including totals for each super-directory. \
-                         Setting maximum depth to 0 is equivalent to not \
-                         specifying it at all.")
-             .validator(unsigned_integer)
-             .display_order(1))
-        .arg(Arg::with_name("nodes")
-             .short("N")
-             .long("nodes")
-             .value_name("all|mount|Node,...|NodeFile|NodeClass")
-             .help("worker nodes")
-             .long_help("Specify the worker nodes. The argument is forwarded \
-                         to mmapplypolicy, see man mmapplypolicy for more \
-                         information.")
-             .takes_value(true))
-        .after_help("Differences to du: mmdu defaults to summarized and human \
-                     readable output and uses apparent size.")
+        .arg(
+            Arg::with_name("dir")
+                .help("input directories")
+                .long_help(
+                    "The input directories for which to gather \
+                     information. If none are given, directories are read \
+                     from standard input.",
+                )
+                .validator(is_dir)
+                .multiple(true),
+        )
+        .arg(
+            Arg::with_name("debug")
+                .hidden(true)
+                .long("debug")
+                .help("debug output")
+                .display_order(2),
+        )
+        .arg(
+            Arg::with_name("max-depth")
+                .short("d")
+                .long("max-depth")
+                .takes_value(true)
+                .value_name("DEPTH")
+                .help("output sub-directory depth")
+                .long_help(
+                    "Show the size of each sub-directory up to the given \
+                     depth including totals for each super-directory. \
+                     Setting maximum depth to 0 is equivalent to not \
+                     specifying it at all.",
+                )
+                .validator(unsigned_integer)
+                .display_order(1),
+        )
+        .arg(
+            Arg::with_name("nodes")
+                .short("N")
+                .long("nodes")
+                .value_name("all|mount|Node,...|NodeFile|NodeClass")
+                .help("worker nodes")
+                .long_help(
+                    "Specify the worker nodes. The argument is forwarded \
+                     to mmapplypolicy, see man mmapplypolicy for more \
+                     information.",
+                )
+                .takes_value(true),
+        )
+        .after_help(
+            "Differences to du: mmdu defaults to summarized and human \
+             readable output and uses apparent size.",
+        )
         .get_matches()
 }
 
@@ -100,9 +115,7 @@ fn is_dir(s: String) -> Result<(), String> {
 
 fn unsigned_integer(s: String) -> Result<(), String> {
     lazy_static! {
-        static ref NUMBER_RE: Regex = Regex::new(
-            r#"^\d+$"#
-        ).unwrap();
+        static ref NUMBER_RE: Regex = Regex::new(r#"^\d+$"#).unwrap();
     }
 
     if NUMBER_RE.is_match(&s) {

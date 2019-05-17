@@ -23,7 +23,6 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-
 use crate::config::Config;
 
 pub fn debug(message: &str, config: &Config) {

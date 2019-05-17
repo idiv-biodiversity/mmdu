@@ -23,7 +23,6 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-
 use clap::ArgMatches;
 
 pub struct Config {
@@ -34,12 +33,12 @@ pub struct Config {
 
 impl Config {
     pub fn from_args(args: &ArgMatches) -> Config {
-        let max_depth = args.value_of("max-depth")
+        let max_depth = args
+            .value_of("max-depth")
             .map(|x| x.parse::<usize>().unwrap())
             .filter(|depth| *depth > 0);
 
-        let nodes = args.value_of("nodes")
-            .map(|n| String::from(n));
+        let nodes = args.value_of("nodes").map(|n| String::from(n));
 
         Config {
             debug: args.is_present("debug"),
