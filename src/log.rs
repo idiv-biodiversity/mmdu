@@ -23,18 +23,20 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
+use clap::crate_name;
+
 use crate::config::Config;
 
-pub fn debug(message: &str, config: &Config) {
+pub fn debug<S: AsRef<str>>(message: S, config: &Config) {
     if config.debug {
-        eprintln!("[debug] {}", message);
+        eprintln!("[debug] {}", message.as_ref());
     }
 }
 
-pub fn error(message: &str) {
-    eprintln!("{}: {}", crate_name!(), message);
+pub fn error<S: AsRef<str>>(message: S) {
+    eprintln!("{}: {}", crate_name!(), message.as_ref());
 }
 
-pub fn warning(message: &str) {
-    eprintln!("{}: warning: {}", crate_name!(), message);
+pub fn warning<S: AsRef<str>>(message: S) {
+    eprintln!("{}: warning: {}", crate_name!(), message.as_ref());
 }

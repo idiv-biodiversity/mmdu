@@ -23,13 +23,16 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-use mktemp::Temp;
+use bstr::io::BufReadExt;
+use bstr::ByteSlice;
+use clap::crate_name;
 use std::collections::BTreeMap;
 use std::fs::File;
-use std::io::{self, BufRead, BufReader};
+use std::io::{self, BufReader};
 use std::ops::AddAssign;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
+use tempfile::{tempdir, tempdir_in};
 
 use crate::config::Config;
 use crate::log;
@@ -37,46 +40,55 @@ use crate::output::*;
 use crate::policy;
 
 pub fn run(dir: &str, config: &Config) -> io::Result<()> {
-    let tmp = Temp::new_dir()?;
+    let tmp = if let Some(ref local_work_dir) = config.local_work_dir {
+        tempdir_in(local_work_dir)?
+    } else {
+        tempdir()?
+    };
 
-    let mut policy = tmp.to_path_buf();
-    policy.push(".policy");
-
-    let mut prefix = tmp.to_path_buf();
-    prefix.push(crate_name!());
+    let policy = tmp.path().join(".policy");
+    let prefix = tmp.path().join(crate_name!());
 
     policy::size(&policy)?;
 
-    let mut child = Command::new("mmapplypolicy");
-    child.arg(dir);
-
-    if let Some(ref nodes) = config.nodes {
-        child.args(&["-N", &nodes]);
-    };
-
-    let mut child = child
+    let mut command = Command::new("mmapplypolicy");
+    command
+        .arg(dir)
         .args(&["-P", policy.to_str().unwrap()])
         .args(&["-f", prefix.to_str().unwrap()])
+        .args(&["--choice-algorithm", "fast"])
         .args(&["-I", "defer"])
-        .args(&["-L", "0"])
+        .args(&["-L", "0"]);
+
+    if let Some(ref nodes) = config.nodes {
+        command.args(&["-N", nodes]);
+    };
+
+    if let Some(ref local_work_dir) = config.local_work_dir {
+        command.args(&["-s", local_work_dir]);
+    };
+
+    if let Some(ref global_work_dir) = config.global_work_dir {
+        command.args(&["-g", global_work_dir]);
+    };
+
+    log::debug(format!("command: {:?}", command), config);
+
+    let mut child = command
         .stdout(Stdio::null())
         .spawn()
         .expect("mmapplypolicy command failed to start");
 
-    let ecode = child.wait().expect("failed to wait on child");
+    let ecode = child.wait().expect("failed waiting on mmapplypolicy");
 
     if ecode.success() {
-        let mut report = tmp.to_path_buf();
-        report.push("mmdu.list.size");
+        let report = tmp.path().join("mmdu.list.size");
 
         sum(dir, report, config)?;
 
         Ok(())
     } else {
-        Err(io::Error::new(
-            io::ErrorKind::Other,
-            "mmapplypolicy unsuccessful",
-        ))
+        Err(io::Error::new(io::ErrorKind::Other, "mmapplypolicy failed"))
     }
 }
 
@@ -136,42 +148,38 @@ fn sum_depth(
     config: &Config,
 ) -> io::Result<BTreeMap<PathBuf, Acc>> {
     let report = File::open(report)?;
+    let report = BufReader::new(report);
 
     let mut dir_sums = BTreeMap::new();
     let prefix_depth = Path::new(dir).iter().count();
 
-    for line in BufReader::new(report).lines() {
-        if line.is_err() {
-            log::error(&format!(
-                "{}: dropping line from policy report, result will be \
-                 incorrect ({:?})",
-                dir, line
-            ));
-
-            continue;
-        };
-
+    for line in report.byte_lines() {
         let line = line?;
 
-        for cap in policy::RE_SIZE.captures_iter(&line) {
-            let size: u64 = cap[1].parse().unwrap();
-            let path = Path::new(&cap[2]);
-            let path_depth = path.iter().count();
-            let path_suffix_depth = path_depth - prefix_depth;
+        let mut groups = line.splitn_str(2, "--");
 
-            log::debug(&format!("path: {:?}", path), config);
+        let meta = groups.next().unwrap();
 
-            for depth in 0..=depth.min(path_suffix_depth) {
-                let prefix: PathBuf =
-                    path.iter().take(prefix_depth + depth).collect();
+        let size = meta.splitn_str(6, " ").nth(4).unwrap();
+        let size = size.to_str().unwrap();
+        let size: u64 = size.parse().unwrap();
 
-                log::debug(&format!("prefix: {:?}", prefix), config);
+        let path = groups.next().unwrap().to_path().unwrap();
+        let path_depth = path.iter().count();
+        let path_suffix_depth = path_depth - prefix_depth;
 
-                dir_sums
-                    .entry(prefix)
-                    .and_modify(|x| *x += (1u64, size))
-                    .or_insert_with(|| Acc::new(1, size));
-            }
+        log::debug(format!("path: {:?}", path), config);
+
+        for depth in 0..=depth.min(path_suffix_depth) {
+            let prefix: PathBuf =
+                path.iter().take(prefix_depth + depth).collect();
+
+            log::debug(format!("prefix: {:?}", prefix), config);
+
+            dir_sums
+                .entry(prefix)
+                .and_modify(|x| *x += (1u64, size))
+                .or_insert_with(|| Acc::new(1, size));
         }
     }
 
@@ -183,14 +191,16 @@ fn sum_total(report: &Path) -> io::Result<u64> {
 
     if report.exists() {
         let report = File::open(report)?;
+        let report = BufReader::new(report);
 
-        for line in BufReader::new(report).lines() {
+        for line in report.byte_lines() {
             let line = line?;
 
-            for cap in policy::RE_SIZE.captures_iter(&line) {
-                let size: u64 = cap[1].parse().unwrap();
-                sum += size;
-            }
+            let size = line.splitn_str(6, " ").nth(4).unwrap();
+            let size = size.to_str().unwrap();
+            let size: u64 = size.parse().unwrap();
+
+            sum += size;
         }
     }
 

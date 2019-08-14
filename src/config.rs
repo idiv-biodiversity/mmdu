@@ -29,6 +29,8 @@ pub struct Config {
     pub debug: bool,
     pub max_depth: Option<usize>,
     pub nodes: Option<String>,
+    pub local_work_dir: Option<String>,
+    pub global_work_dir: Option<String>,
 }
 
 impl Config {
@@ -40,10 +42,17 @@ impl Config {
 
         let nodes = args.value_of("nodes").map(String::from);
 
+        let local_work_dir = args.value_of("local-work-dir").map(String::from);
+
+        let global_work_dir =
+            args.value_of("global-work-dir").map(String::from);
+
         Config {
             debug: args.is_present("debug"),
             max_depth,
             nodes,
+            local_work_dir,
+            global_work_dir,
         }
     }
 }

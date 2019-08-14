@@ -24,8 +24,8 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 use atty::Stream;
+use clap::{crate_description, crate_name, crate_version};
 use clap::{App, AppSettings, Arg, ArgMatches};
-use regex::Regex;
 use std::path::Path;
 
 pub fn args() -> ArgMatches<'static> {
@@ -37,6 +37,73 @@ pub fn args() -> ArgMatches<'static> {
         AppSettings::ColorNever
     };
 
+    let dir = Arg::with_name("dir")
+        .help("input directories")
+        .long_help(
+"The input directories for which to gather information. If none are given, \
+ directories are read from standard input.",
+        )
+        .multiple(true)
+        .validator(is_dir);
+
+    let debug = Arg::with_name("debug")
+        .hidden_short_help(true)
+        .long("debug")
+        .help("debug output")
+        .display_order(2);
+
+    let max_depth = Arg::with_name("max-depth")
+        .short("d")
+        .long("max-depth")
+        .takes_value(true)
+        .value_name("DEPTH")
+        .help("output sub-directory depth")
+        .long_help(
+"Show the size of each sub-directory up to the given depth including totals \
+ for each super-directory. Setting maximum depth to 0 is equivalent to not \
+ specifying it at all.",
+        )
+        .display_order(1)
+        .validator(is_number);
+
+    let nodes = Arg::with_name("nodes")
+        .short("N")
+        .help("use for mmapplypolicy -N argument")
+        .long_help(
+"Specify list of nodes to use with `mmapplypolicy -N`. For detailed \
+ information, see `man mmapplypolicy`.",
+        )
+        .value_name("all|mount|Node,...|NodeFile|NodeClass")
+        .takes_value(true)
+        .display_order(2);
+
+    let global_working_dir = Arg::with_name("global-working-dir")
+        .short("g")
+        .help("use for mmapplypolicy -g argument")
+        .long_help(
+"Specify global work directory to use with `mmapplypolicy -g`. For detailed \
+ information, see `man mmapplypolicy`.",
+        )
+        .takes_value(true)
+        .value_name("dir")
+        .display_order(3)
+        .validator(is_dir);
+
+    let local_working_dir = Arg::with_name("local-working-dir")
+        .short("s")
+        .help("use for mmapplypolicy -s argument and policy output")
+        .long_help(
+"Specify local work directory to use with `mmapplypolicy -s`. Also, the \
+ policy LIST output will be written to this directory temporarily before \
+ being processed by this tool. Defaults to the system temporary directory. \
+ This might be too small for large directories. For detailed information \
+ about the `-s` argument, see `man mmapplypolicy`.",
+        )
+        .takes_value(true)
+        .value_name("dir")
+        .display_order(3)
+        .validator(is_dir);
+
     App::new(crate_name!())
         .version(crate_version!())
         .about(crate_description!())
@@ -45,56 +112,15 @@ pub fn args() -> ArgMatches<'static> {
         .help_short("?")
         .help_message("show this help output")
         .version_message("show version")
-        .arg(
-            Arg::with_name("dir")
-                .help("input directories")
-                .long_help(
-                    "The input directories for which to gather \
-                     information. If none are given, directories are read \
-                     from standard input.",
-                )
-                .validator(is_dir)
-                .multiple(true),
-        )
-        .arg(
-            Arg::with_name("debug")
-                .hidden(true)
-                .long("debug")
-                .help("debug output")
-                .display_order(2),
-        )
-        .arg(
-            Arg::with_name("max-depth")
-                .short("d")
-                .long("max-depth")
-                .takes_value(true)
-                .value_name("DEPTH")
-                .help("output sub-directory depth")
-                .long_help(
-                    "Show the size of each sub-directory up to the given \
-                     depth including totals for each super-directory. \
-                     Setting maximum depth to 0 is equivalent to not \
-                     specifying it at all.",
-                )
-                .validator(unsigned_integer)
-                .display_order(1),
-        )
-        .arg(
-            Arg::with_name("nodes")
-                .short("N")
-                .long("nodes")
-                .value_name("all|mount|Node,...|NodeFile|NodeClass")
-                .help("worker nodes")
-                .long_help(
-                    "Specify the worker nodes. The argument is forwarded \
-                     to mmapplypolicy, see man mmapplypolicy for more \
-                     information.",
-                )
-                .takes_value(true),
-        )
+        .arg(dir)
+        .arg(debug)
+        .arg(max_depth)
+        .arg(nodes)
+        .arg(local_working_dir)
+        .arg(global_working_dir)
         .after_help(
-            "Differences to du: mmdu defaults to summarized and human \
-             readable output and uses apparent size.",
+"Differences to du: mmdu defaults to summarized and human readable output and \
+ uses apparent size.",
         )
         .get_matches()
 }
@@ -113,14 +139,10 @@ fn is_dir(s: String) -> Result<(), String> {
     }
 }
 
-fn unsigned_integer(s: String) -> Result<(), String> {
-    lazy_static! {
-        static ref NUMBER_RE: Regex = Regex::new(r#"^\d+$"#).unwrap();
-    }
-
-    if NUMBER_RE.is_match(&s) {
+fn is_number(s: String) -> Result<(), String> {
+    if s.parse::<usize>().is_ok() {
         Ok(())
     } else {
-        Err(format!("not a number: {}", s))
+        Err(format!("not a positive number: {}", s))
     }
 }

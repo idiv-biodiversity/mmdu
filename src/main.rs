@@ -23,15 +23,6 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-extern crate atty;
-extern crate bytesize;
-#[macro_use]
-extern crate clap;
-#[macro_use]
-extern crate lazy_static;
-extern crate mktemp;
-extern crate regex;
-
 mod app;
 mod config;
 mod log;
@@ -83,7 +74,7 @@ fn run(dir: &str, config: &Config) {
 
     match result {
         Err(error) => {
-            log::error(&format!("skipping directory {}: {}", dir, error));
+            log::error(format!("skipping directory {}: {}", dir, error));
         }
 
         Ok(()) => (),

@@ -23,7 +23,6 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-use regex::Regex;
 use std::fs::File;
 use std::io::{self, Write};
 use std::path::PathBuf;
@@ -31,11 +30,6 @@ use std::path::PathBuf;
 // ----------------------------------------------------------------------------
 // normal disk usage
 // ----------------------------------------------------------------------------
-
-lazy_static! {
-    pub static ref RE_SIZE: Regex =
-        Regex::new(r#"^\d+\s+\d+\s+\d+\s+(\d+)\s+--\s+(.+)$"#).unwrap();
-}
 
 pub fn size(file: &PathBuf) -> io::Result<()> {
     let mut file = File::create(file)?;
