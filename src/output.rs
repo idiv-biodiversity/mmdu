@@ -25,9 +25,9 @@
 
 use bytesize::ByteSize;
 
-pub fn output(dir: &str, size: u64) {
+pub fn output<S: AsRef<str>>(dir: S, size: u64) {
     let size = humanize(size);
-    println!("{}\t{}", size, dir);
+    println!("{}\t{}", size, dir.as_ref());
 }
 
 fn humanize(bytes: u64) -> String {

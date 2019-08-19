@@ -105,7 +105,7 @@ fn sum_consume(dir: &str, report: PathBuf, config: &Config) -> io::Result<()> {
                 // drop files and empty directories
                 // they each have only one entry
                 if *n > 1 {
-                    output(dir.to_str().unwrap(), *size);
+                    output(dir.to_string_lossy(), *size);
                 }
             }
         }

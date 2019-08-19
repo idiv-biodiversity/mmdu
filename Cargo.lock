@@ -106,7 +106,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "mmdu"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "atty 0.2.13 (registry+https://github.com/rust-lang/crates.io-index)",
  "bstr 0.2.7 (registry+https://github.com/rust-lang/crates.io-index)",
