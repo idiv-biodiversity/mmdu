@@ -125,6 +125,7 @@ pub fn args() -> ArgMatches<'static> {
         .get_matches()
 }
 
+#[allow(clippy::needless_pass_by_value)]
 fn is_dir(s: String) -> Result<(), String> {
     let path = Path::new(&s);
 
@@ -132,13 +133,14 @@ fn is_dir(s: String) -> Result<(), String> {
         Err(format!("does not exist: {:?}", path))
     } else if !path.is_absolute() {
         Err(format!("is not absolute: {:?}", path))
-    } else if !path.is_dir() {
-        Err(format!("is not a directory: {:?}", path))
-    } else {
+    } else if path.is_dir() {
         Ok(())
+    } else {
+        Err(format!("is not a directory: {:?}", path))
     }
 }
 
+#[allow(clippy::needless_pass_by_value)]
 fn is_number(s: String) -> Result<(), String> {
     if s.parse::<usize>().is_ok() {
         Ok(())

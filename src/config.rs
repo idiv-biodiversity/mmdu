@@ -34,7 +34,7 @@ pub struct Config {
 }
 
 impl Config {
-    pub fn from_args(args: &ArgMatches) -> Config {
+    pub fn from_args(args: &ArgMatches) -> Self {
         let max_depth = args
             .value_of("max-depth")
             .map(|x| x.parse::<usize>().unwrap())
@@ -47,7 +47,7 @@ impl Config {
         let global_work_dir =
             args.value_of("global-work-dir").map(String::from);
 
-        Config {
+        Self {
             debug: args.is_present("debug"),
             max_depth,
             nodes,

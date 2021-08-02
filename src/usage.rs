@@ -36,7 +36,7 @@ use tempfile::{tempdir, tempdir_in};
 
 use crate::config::Config;
 use crate::log;
-use crate::output::*;
+use crate::output::output;
 use crate::policy;
 
 pub fn run(dir: &str, config: &Config) -> io::Result<()> {
@@ -84,7 +84,7 @@ pub fn run(dir: &str, config: &Config) -> io::Result<()> {
     if ecode.success() {
         let report = tmp.path().join("mmdu.list.size");
 
-        sum(dir, report, config)?;
+        sum(dir, &report, config)?;
 
         Ok(())
     } else {
@@ -92,28 +92,24 @@ pub fn run(dir: &str, config: &Config) -> io::Result<()> {
     }
 }
 
-fn sum(dir: &str, report: PathBuf, config: &Config) -> io::Result<()> {
+fn sum(dir: &str, report: &Path, config: &Config) -> io::Result<()> {
     sum_consume(dir, report, config)
 }
 
-fn sum_consume(dir: &str, report: PathBuf, config: &Config) -> io::Result<()> {
-    match config.max_depth {
-        Some(depth) => {
-            let sizes = sum_depth(dir, depth, &report, config)?;
+fn sum_consume(dir: &str, report: &Path, config: &Config) -> io::Result<()> {
+    if let Some(depth) = config.max_depth {
+        let sizes = sum_depth(dir, depth, report, config)?;
 
-            for (dir, Acc { n, size }) in sizes.iter() {
-                // drop files and empty directories
-                // they each have only one entry
-                if *n > 1 {
-                    output(dir.to_string_lossy(), *size);
-                }
+        for (dir, Acc { n, size }) in &sizes {
+            // drop files and empty directories
+            // they each have only one entry
+            if *n > 1 {
+                output(dir.to_string_lossy(), *size);
             }
         }
-
-        None => {
-            let size = sum_total(&report).unwrap();
-            output(dir, size);
-        }
+    } else {
+        let size = sum_total(report).unwrap();
+        output(dir, size);
     };
 
     Ok(())
@@ -125,8 +121,8 @@ struct Acc {
 }
 
 impl Acc {
-    fn new(n: u64, size: u64) -> Acc {
-        Acc { n, size }
+    const fn new(n: u64, size: u64) -> Self {
+        Self { n, size }
     }
 }
 
@@ -134,7 +130,7 @@ impl AddAssign<(u64, u64)> for Acc {
     fn add_assign(&mut self, other: (u64, u64)) {
         let (n, size) = other;
 
-        *self = Acc {
+        *self = Self {
             n: self.n + n,
             size: self.size + size,
         };
@@ -178,7 +174,7 @@ fn sum_depth(
 
             dir_sums
                 .entry(prefix)
-                .and_modify(|x| *x += (1u64, size))
+                .and_modify(|x| *x += (1, size))
                 .or_insert_with(|| Acc::new(1, size));
         }
     }

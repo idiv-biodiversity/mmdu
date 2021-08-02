@@ -25,13 +25,13 @@
 
 use std::fs::File;
 use std::io::{self, Write};
-use std::path::PathBuf;
+use std::path::Path;
 
 // ----------------------------------------------------------------------------
 // normal disk usage
 // ----------------------------------------------------------------------------
 
-pub fn size(file: &PathBuf) -> io::Result<()> {
+pub fn size(file: &Path) -> io::Result<()> {
     let mut file = File::create(file)?;
 
     let content = "

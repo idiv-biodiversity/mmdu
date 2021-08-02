@@ -23,6 +23,10 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
+#![deny(clippy::all)]
+#![warn(clippy::pedantic, clippy::nursery, clippy::cargo)]
+#![allow(clippy::multiple_crate_versions)]
+
 mod app;
 mod config;
 mod log;
@@ -40,31 +44,27 @@ fn main() {
 
     let config = config::Config::from_args(&args);
 
-    match args.values_of("dir") {
-        Some(dirs) => {
-            for dir in dirs {
-                run(dir, &config);
-            }
+    if let Some(dirs) = args.values_of("dir") {
+        for dir in dirs {
+            run(dir, &config);
+        }
+    } else {
+        let interactive = atty::is(Stream::Stdin);
+
+        if interactive {
+            log::warning("input is read from terminal");
+            log::warning("only experts do this on purpose");
+            log::warning("you may have forgotten to either");
+            log::warning("- specify directories on the command line or");
+            log::warning("- pipe data into this tool");
+            log::warning("press CTRL-D or CTRL-C to exit");
         }
 
-        None => {
-            let interactive = atty::is(Stream::Stdin);
+        let stdin = io::stdin();
 
-            if interactive {
-                log::warning("input is read from terminal");
-                log::warning("only experts do this on purpose");
-                log::warning("you may have forgotten to either");
-                log::warning("- specify directories on the command line or");
-                log::warning("- pipe data into this tool");
-                log::warning("press CTRL-D or CTRL-C to exit");
-            }
-
-            let stdin = io::stdin();
-
-            for line in stdin.lock().lines() {
-                let dir = &line.unwrap();
-                run(dir, &config);
-            }
+        for line in stdin.lock().lines() {
+            let dir = &line.unwrap();
+            run(dir, &config);
         }
     }
 }
