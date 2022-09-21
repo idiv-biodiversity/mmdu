@@ -54,22 +54,22 @@ pub fn run(dir: &str, config: &Config) -> io::Result<()> {
     let mut command = Command::new("mmapplypolicy");
     command
         .arg(dir)
-        .args(&["-P", policy.to_str().unwrap()])
-        .args(&["-f", prefix.to_str().unwrap()])
-        .args(&["--choice-algorithm", "fast"])
-        .args(&["-I", "defer"])
-        .args(&["-L", "0"]);
+        .args(["-P", policy.to_str().unwrap()])
+        .args(["-f", prefix.to_str().unwrap()])
+        .args(["--choice-algorithm", "fast"])
+        .args(["-I", "defer"])
+        .args(["-L", "0"]);
 
     if let Some(ref nodes) = config.nodes {
-        command.args(&["-N", nodes]);
+        command.args(["-N", nodes]);
     };
 
     if let Some(ref local_work_dir) = config.local_work_dir {
-        command.args(&["-s", local_work_dir]);
+        command.args(["-s", local_work_dir]);
     };
 
     if let Some(ref global_work_dir) = config.global_work_dir {
-        command.args(&["-g", global_work_dir]);
+        command.args(["-g", global_work_dir]);
     };
 
     log::debug(format!("command: {:?}", command), config);
