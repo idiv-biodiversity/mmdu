@@ -21,3 +21,6 @@ tempfile = "3"
 [dependencies.clap]
 version = "3"
 features = ["cargo"]
+
+[profile.release]
+lto = true
