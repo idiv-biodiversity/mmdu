@@ -10,7 +10,7 @@ homepage = "https://github.com/idiv-biodiversity/mmdu"
 repository = "https://github.com/idiv-biodiversity/mmdu"
 keywords = ["disk", "usage", "gpfs", "spectrum-scale"]
 categories = ["command-line-utilities", "filesystem"]
-edition = "2018"
+edition = "2021"
 
 [dependencies]
 atty = "0.2"
