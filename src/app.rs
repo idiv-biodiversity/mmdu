@@ -23,21 +23,12 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-use atty::Stream;
 use clap::{crate_description, crate_name, crate_version};
-use clap::{App, AppSettings, Arg, ArgMatches};
+use clap::{Arg, ArgMatches, Command};
 use std::path::Path;
 
-pub fn args() -> ArgMatches<'static> {
-    let color = atty::is(Stream::Stdout);
-
-    let color = if color {
-        AppSettings::ColoredHelp
-    } else {
-        AppSettings::ColorNever
-    };
-
-    let dir = Arg::with_name("dir")
+pub fn args() -> ArgMatches {
+    let dir = Arg::new("dir")
         .help("input directories")
         .long_help(
 "The input directories for which to gather information. If none are given, \
@@ -46,14 +37,14 @@ pub fn args() -> ArgMatches<'static> {
         .multiple(true)
         .validator(is_dir);
 
-    let debug = Arg::with_name("debug")
+    let debug = Arg::new("debug")
         .hidden_short_help(true)
         .long("debug")
         .help("debug output")
         .display_order(2);
 
-    let max_depth = Arg::with_name("max-depth")
-        .short("d")
+    let max_depth = Arg::new("max-depth")
+        .short('d')
         .long("max-depth")
         .takes_value(true)
         .value_name("DEPTH")
@@ -66,8 +57,8 @@ pub fn args() -> ArgMatches<'static> {
         .display_order(1)
         .validator(is_number);
 
-    let nodes = Arg::with_name("nodes")
-        .short("N")
+    let nodes = Arg::new("nodes")
+        .short('N')
         .help("use for mmapplypolicy -N argument")
         .long_help(
 "Specify list of nodes to use with `mmapplypolicy -N`. For detailed \
@@ -77,8 +68,8 @@ pub fn args() -> ArgMatches<'static> {
         .takes_value(true)
         .display_order(2);
 
-    let global_working_dir = Arg::with_name("global-working-dir")
-        .short("g")
+    let global_working_dir = Arg::new("global-working-dir")
+        .short('g')
         .help("use for mmapplypolicy -g argument")
         .long_help(
 "Specify global work directory to use with `mmapplypolicy -g`. For detailed \
@@ -89,8 +80,8 @@ pub fn args() -> ArgMatches<'static> {
         .display_order(3)
         .validator(is_dir);
 
-    let local_working_dir = Arg::with_name("local-working-dir")
-        .short("s")
+    let local_working_dir = Arg::new("local-working-dir")
+        .short('s')
         .help("use for mmapplypolicy -s argument and policy output")
         .long_help(
 "Specify local work directory to use with `mmapplypolicy -s`. Also, the \
@@ -104,20 +95,22 @@ pub fn args() -> ArgMatches<'static> {
         .display_order(3)
         .validator(is_dir);
 
-    App::new(crate_name!())
+    Command::new(crate_name!())
         .version(crate_version!())
         .about(crate_description!())
-        .global_setting(color)
         .max_term_width(80)
-        .help_short("?")
-        .help_message("show this help output")
-        .version_message("show version")
         .arg(dir)
         .arg(debug)
         .arg(max_depth)
         .arg(nodes)
         .arg(local_working_dir)
         .arg(global_working_dir)
+        .mut_arg("help", |a| {
+            a.short('?').help("print help").long_help("Print help.")
+        })
+        .mut_arg("version", |a| {
+            a.help("print version").long_help("Print version.")
+        })
         .after_help(
 "Differences to du: mmdu defaults to summarized and human readable output and \
  uses apparent size.",
@@ -125,8 +118,7 @@ pub fn args() -> ArgMatches<'static> {
         .get_matches()
 }
 
-#[allow(clippy::needless_pass_by_value)]
-fn is_dir(s: String) -> Result<(), String> {
+fn is_dir(s: &str) -> Result<(), String> {
     let path = Path::new(&s);
 
     if !path.exists() {
@@ -140,8 +132,7 @@ fn is_dir(s: String) -> Result<(), String> {
     }
 }
 
-#[allow(clippy::needless_pass_by_value)]
-fn is_number(s: String) -> Result<(), String> {
+fn is_number(s: &str) -> Result<(), String> {
     if s.parse::<usize>().is_ok() {
         Ok(())
     } else {
