@@ -23,11 +23,13 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
+use std::path::Path;
+
 use bytesize::ByteSize;
 
-pub fn output<S: AsRef<str>>(dir: S, size: u64) {
+pub fn output(dir: &Path, size: u64) {
     let size = humanize(size);
-    println!("{}\t{}", size, dir.as_ref());
+    println!("{}\t{}", size, dir.display());
 }
 
 fn humanize(bytes: u64) -> String {

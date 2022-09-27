@@ -23,25 +23,29 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-use clap::{crate_description, crate_name, crate_version};
-use clap::{Arg, ArgMatches, Command};
-use std::path::Path;
+use std::path::PathBuf;
 
-pub fn args() -> ArgMatches {
+use clap::builder::ValueParser;
+use clap::value_parser;
+use clap::{crate_description, crate_name, crate_version};
+use clap::{Arg, ArgAction, Command};
+
+/// Returns command-line parser.
+pub fn build() -> Command<'static> {
     let dir = Arg::new("dir")
         .help("input directories")
         .long_help(
 "The input directories for which to gather information. If none are given, \
  directories are read from standard input.",
         )
-        .multiple(true)
-        .validator(is_dir);
+        .multiple_values(true)
+        .action(ArgAction::Append)
+        .value_parser(ValueParser::new(is_dir));
 
     let debug = Arg::new("debug")
-        .hidden_short_help(true)
+        .hide_short_help(true)
         .long("debug")
-        .help("debug output")
-        .display_order(2);
+        .long_help("Print debug messages while running.");
 
     let max_depth = Arg::new("max-depth")
         .short('d')
@@ -54,35 +58,87 @@ pub fn args() -> ArgMatches {
  for each super-directory. Setting maximum depth to 0 is equivalent to not \
  specifying it at all.",
         )
-        .display_order(1)
-        .validator(is_number);
+        .value_parser(value_parser!(usize));
 
+    Command::new(crate_name!())
+        .version(crate_version!())
+        .about(crate_description!())
+        .arg(dir)
+        .args(output())
+        .args(mmapplypolicy())
+        .arg(max_depth)
+        .arg(debug)
+        .mut_arg("help", |help| {
+            help.short('?')
+                .help("print help (use --help to see all options)")
+                .long_help("Print help.")
+        })
+        .mut_arg("version", |a| {
+            a.long_help("Print version.").hide_short_help(true)
+        })
+        .after_help(
+"Differences to `du`: `mmdu` defaults to summarized and human readable output \
+ and uses apparent size.",
+        )
+}
+
+// ----------------------------------------------------------------------------
+// argument groups
+// ----------------------------------------------------------------------------
+
+fn output() -> Vec<Arg<'static>> {
+    let block = Arg::new("block")
+        .long("block")
+        .help("list block usage")
+        .long_help("List block usage.")
+        .display_order(1)
+        .help_heading("OUTPUT OPTIONS");
+
+    let inodes = Arg::new("inodes")
+        .long("inodes")
+        .help("list inode usage")
+        .long_help("List inode usage.")
+        .display_order(2)
+        .help_heading("OUTPUT OPTIONS");
+
+    let both = Arg::new("both")
+        .long("both")
+        .help("list both block usage and inode usage")
+        .long_help("List both block usage and inode usage.")
+        .display_order(3)
+        .help_heading("OUTPUT OPTIONS");
+
+    vec![block, inodes, both]
+}
+
+/// Returns arguments forwarded to `mmapplypolicy`.
+fn mmapplypolicy() -> Vec<Arg<'static>> {
     let nodes = Arg::new("nodes")
-        .short('N')
-        .help("use for mmapplypolicy -N argument")
+        .long("mm-N")
+        .hide_short_help(true)
         .long_help(
 "Specify list of nodes to use with `mmapplypolicy -N`. For detailed \
  information, see `man mmapplypolicy`.",
         )
         .value_name("all|mount|Node,...|NodeFile|NodeClass")
         .takes_value(true)
-        .display_order(2);
+        .help_heading("OPTIONS FORWARDED TO `mmapplypolicy`");
 
-    let global_working_dir = Arg::new("global-working-dir")
-        .short('g')
-        .help("use for mmapplypolicy -g argument")
+    let global_work_dir = Arg::new("global-work-dir")
+        .long("mm-g")
+        .hide_short_help(true)
         .long_help(
 "Specify global work directory to use with `mmapplypolicy -g`. For detailed \
  information, see `man mmapplypolicy`.",
         )
         .takes_value(true)
         .value_name("dir")
-        .display_order(3)
-        .validator(is_dir);
+        .value_parser(is_dir)
+        .help_heading("OPTIONS FORWARDED TO `mmapplypolicy`");
 
-    let local_working_dir = Arg::new("local-working-dir")
-        .short('s')
-        .help("use for mmapplypolicy -s argument and policy output")
+    let local_work_dir = Arg::new("local-work-dir")
+        .long("mm-s")
+        .hide_short_help(true)
         .long_help(
 "Specify local work directory to use with `mmapplypolicy -s`. Also, the \
  policy LIST output will be written to this directory temporarily before \
@@ -92,50 +148,26 @@ pub fn args() -> ArgMatches {
         )
         .takes_value(true)
         .value_name("dir")
-        .display_order(3)
-        .validator(is_dir);
+        .value_parser(is_dir)
+        .help_heading("OPTIONS FORWARDED TO `mmapplypolicy`");
 
-    Command::new(crate_name!())
-        .version(crate_version!())
-        .about(crate_description!())
-        .max_term_width(80)
-        .arg(dir)
-        .arg(debug)
-        .arg(max_depth)
-        .arg(nodes)
-        .arg(local_working_dir)
-        .arg(global_working_dir)
-        .mut_arg("help", |a| {
-            a.short('?').help("print help").long_help("Print help.")
-        })
-        .mut_arg("version", |a| {
-            a.help("print version").long_help("Print version.")
-        })
-        .after_help(
-"Differences to du: mmdu defaults to summarized and human readable output and \
- uses apparent size.",
-        )
-        .get_matches()
+    vec![nodes, local_work_dir, global_work_dir]
 }
 
-fn is_dir(s: &str) -> Result<(), String> {
-    let path = Path::new(&s);
+// ----------------------------------------------------------------------------
+// argument validator
+// ----------------------------------------------------------------------------
+
+fn is_dir(s: &str) -> Result<PathBuf, String> {
+    let path = PathBuf::from(s);
 
     if !path.exists() {
         Err(format!("does not exist: {:?}", path))
     } else if !path.is_absolute() {
         Err(format!("is not absolute: {:?}", path))
     } else if path.is_dir() {
-        Ok(())
+        Ok(path)
     } else {
         Err(format!("is not a directory: {:?}", path))
-    }
-}
-
-fn is_number(s: &str) -> Result<(), String> {
-    if s.parse::<usize>().is_ok() {
-        Ok(())
-    } else {
-        Err(format!("not a positive number: {}", s))
     }
 }

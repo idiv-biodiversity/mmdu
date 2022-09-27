@@ -23,15 +23,17 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-use bstr::io::BufReadExt;
-use bstr::ByteSlice;
-use clap::crate_name;
 use std::collections::BTreeMap;
 use std::fs::File;
 use std::io::{self, BufReader};
 use std::ops::AddAssign;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
+
+use anyhow::{anyhow, Context, Result};
+use bstr::io::BufReadExt;
+use bstr::ByteSlice;
+use clap::crate_name;
 use tempfile::{tempdir, tempdir_in};
 
 use crate::config::Config;
@@ -39,17 +41,21 @@ use crate::log;
 use crate::output::output;
 use crate::policy;
 
-pub fn run(dir: &str, config: &Config) -> io::Result<()> {
-    let tmp = if let Some(ref local_work_dir) = config.local_work_dir {
-        tempdir_in(local_work_dir)?
+pub fn run(dir: &Path, config: &Config) -> Result<()> {
+    let tmp = if let Some(ref local_work_dir) = config.mm_local_work_dir {
+        tempdir_in(local_work_dir).with_context(|| {
+            format!("creating tempdir in {}", local_work_dir)
+        })?
     } else {
-        tempdir()?
+        tempdir().context("creating temdir")?
     };
 
     let policy = tmp.path().join(".policy");
     let prefix = tmp.path().join(crate_name!());
 
-    policy::size(&policy)?;
+    policy::size(&policy).with_context(|| {
+        format!("writing policy file to {}", policy.display())
+    })?;
 
     let mut command = Command::new("mmapplypolicy");
     command
@@ -60,15 +66,15 @@ pub fn run(dir: &str, config: &Config) -> io::Result<()> {
         .args(["-I", "defer"])
         .args(["-L", "0"]);
 
-    if let Some(ref nodes) = config.nodes {
+    if let Some(ref nodes) = config.mm_nodes {
         command.args(["-N", nodes]);
     };
 
-    if let Some(ref local_work_dir) = config.local_work_dir {
+    if let Some(ref local_work_dir) = config.mm_local_work_dir {
         command.args(["-s", local_work_dir]);
     };
 
-    if let Some(ref global_work_dir) = config.global_work_dir {
+    if let Some(ref global_work_dir) = config.mm_global_work_dir {
         command.args(["-g", global_work_dir]);
     };
 
@@ -77,9 +83,9 @@ pub fn run(dir: &str, config: &Config) -> io::Result<()> {
     let mut child = command
         .stdout(Stdio::null())
         .spawn()
-        .expect("mmapplypolicy command failed to start");
+        .context("`mmapplypolicy` command failed to start")?;
 
-    let ecode = child.wait().expect("failed waiting on mmapplypolicy");
+    let ecode = child.wait().context("failed waiting on `mmapplypolicy`")?;
 
     if ecode.success() {
         let report = tmp.path().join("mmdu.list.size");
@@ -88,15 +94,23 @@ pub fn run(dir: &str, config: &Config) -> io::Result<()> {
 
         Ok(())
     } else {
-        Err(io::Error::new(io::ErrorKind::Other, "mmapplypolicy failed"))
+        // ALLOW if let is easier to comprehend
+        #[allow(clippy::option_if_let_else)]
+        let e = if let Some(rc) = ecode.code() {
+            anyhow!("`mmapplypolicy` failed with exit status {rc}")
+        } else {
+            anyhow!("`mmapplypolicy` failed")
+        };
+
+        Err(e)
     }
 }
 
-fn sum(dir: &str, report: &Path, config: &Config) -> io::Result<()> {
+fn sum(dir: &Path, report: &Path, config: &Config) -> io::Result<()> {
     sum_consume(dir, report, config)
 }
 
-fn sum_consume(dir: &str, report: &Path, config: &Config) -> io::Result<()> {
+fn sum_consume(dir: &Path, report: &Path, config: &Config) -> io::Result<()> {
     if let Some(depth) = config.max_depth {
         let sizes = sum_depth(dir, depth, report, config)?;
 
@@ -104,7 +118,7 @@ fn sum_consume(dir: &str, report: &Path, config: &Config) -> io::Result<()> {
             // drop files and empty directories
             // they each have only one entry
             if *n > 1 {
-                output(dir.to_string_lossy(), *size);
+                output(dir, *size);
             }
         }
     } else {
@@ -138,7 +152,7 @@ impl AddAssign<(u64, u64)> for Acc {
 }
 
 fn sum_depth(
-    dir: &str,
+    dir: &Path,
     depth: usize,
     report: &Path,
     config: &Config,

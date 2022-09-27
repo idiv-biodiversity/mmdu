@@ -23,36 +23,182 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
+use std::path::PathBuf;
+
 use clap::ArgMatches;
 
-pub struct Config {
-    pub debug: bool,
-    pub max_depth: Option<usize>,
-    pub nodes: Option<String>,
-    pub local_work_dir: Option<String>,
-    pub global_work_dir: Option<String>,
+pub fn get() -> Config {
+    let cli = crate::cli::build();
+    let args = cli.get_matches();
+    Config::from(args)
 }
 
-impl Config {
-    pub fn from_args(args: &ArgMatches) -> Self {
+#[derive(Debug)]
+pub struct Config {
+    pub dirs: Option<Vec<PathBuf>>,
+    pub debug: bool,
+    pub max_depth: Option<usize>,
+    pub mm_nodes: Option<String>,
+    pub mm_local_work_dir: Option<String>,
+    pub mm_global_work_dir: Option<String>,
+    pub count_bytes: bool,
+    pub count_inodes: bool,
+}
+
+impl From<ArgMatches> for Config {
+    fn from(args: ArgMatches) -> Self {
+        let dirs = args
+            .get_many::<PathBuf>("dir")
+            .map(|x| x.map(ToOwned::to_owned).collect::<Vec<_>>());
+
+        let debug = args.contains_id("debug");
+
         let max_depth = args
-            .value_of("max-depth")
-            .map(|x| x.parse::<usize>().unwrap())
+            .get_one::<usize>("max-depth")
+            .copied()
             .filter(|depth| *depth > 0);
 
-        let nodes = args.value_of("nodes").map(String::from);
+        let mm_nodes = args.get_one::<String>("nodes").cloned();
 
-        let local_work_dir = args.value_of("local-work-dir").map(String::from);
+        let mm_local_work_dir =
+            args.get_one::<String>("local-work-dir").cloned();
 
-        let global_work_dir =
-            args.value_of("global-work-dir").map(String::from);
+        let mm_global_work_dir =
+            args.get_one::<String>("global-work-dir").cloned();
+
+        let (count_bytes, count_inodes) = cbi(&args);
 
         Self {
-            debug: args.is_present("debug"),
+            dirs,
+            debug,
             max_depth,
-            nodes,
-            local_work_dir,
-            global_work_dir,
+            mm_nodes,
+            mm_local_work_dir,
+            mm_global_work_dir,
+            count_bytes,
+            count_inodes,
         }
+    }
+}
+
+/// Returns whether to count block usage and/or inode usage.
+fn cbi(args: &ArgMatches) -> (bool, bool) {
+    let last_block = args
+        .indices_of("block")
+        .and_then(Iterator::last)
+        .unwrap_or_default();
+
+    let last_inodes = args
+        .indices_of("inodes")
+        .and_then(Iterator::last)
+        .unwrap_or_default();
+
+    let last_both = args
+        .indices_of("both")
+        .and_then(Iterator::last)
+        .unwrap_or_default();
+
+    let last = [last_block, last_inodes, last_both]
+        .into_iter()
+        .max()
+        .unwrap();
+
+    if last == last_block {
+        (true, false)
+    } else if last == last_inodes {
+        (false, true)
+    } else {
+        (true, true)
+    }
+}
+
+#[cfg(test)]
+mod test {
+    #[test]
+    fn cbi() {
+        let cli = crate::cli::build();
+
+        assert_eq!(
+            (true, false),
+            super::cbi(&cli.clone().get_matches_from([clap::crate_name!()]))
+        );
+
+        assert_eq!(
+            (true, false),
+            super::cbi(
+                &cli.clone()
+                    .get_matches_from([clap::crate_name!(), "--block"])
+            )
+        );
+
+        assert_eq!(
+            (false, true),
+            super::cbi(
+                &cli.clone()
+                    .get_matches_from([clap::crate_name!(), "--inodes"])
+            )
+        );
+
+        assert_eq!(
+            (true, true),
+            super::cbi(
+                &cli.clone()
+                    .get_matches_from([clap::crate_name!(), "--both"])
+            )
+        );
+
+        assert_eq!(
+            (false, true),
+            super::cbi(&cli.clone().get_matches_from([
+                clap::crate_name!(),
+                "--block",
+                "--inodes"
+            ]))
+        );
+
+        assert_eq!(
+            (true, true),
+            super::cbi(&cli.clone().get_matches_from([
+                clap::crate_name!(),
+                "--block",
+                "--both"
+            ]))
+        );
+
+        assert_eq!(
+            (true, false),
+            super::cbi(&cli.clone().get_matches_from([
+                clap::crate_name!(),
+                "--inodes",
+                "--block"
+            ]))
+        );
+
+        assert_eq!(
+            (true, true),
+            super::cbi(&cli.clone().get_matches_from([
+                clap::crate_name!(),
+                "--inodes",
+                "--both"
+            ]))
+        );
+
+        assert_eq!(
+            (true, false),
+            super::cbi(&cli.clone().get_matches_from([
+                clap::crate_name!(),
+                "--both",
+                "--block"
+            ]))
+        );
+
+        assert_eq!(
+            (false, true),
+            super::cbi(&cli.clone().get_matches_from([
+                clap::crate_name!(),
+                "--both",
+                "--inodes"
+            ]))
+        );
     }
 }

@@ -26,54 +26,53 @@
 #![deny(clippy::all)]
 #![warn(clippy::pedantic, clippy::nursery, clippy::cargo)]
 
-mod app;
+mod cli;
 mod config;
 mod log;
 mod output;
 mod policy;
 mod usage;
 
-use atty::Stream;
 use std::io;
+use std::path::Path;
+
+use atty::Stream;
 
 use crate::config::Config;
 
 fn main() {
-    let args = app::args();
+    let config = config::get();
+    log::debug(format!("{:#?}", config), &config);
 
-    let config = config::Config::from_args(&args);
+    // ALLOW if let is easier to comprehend
+    #[allow(clippy::option_if_let_else)]
+    if let Some(dirs) = &config.dirs {
+        for dir in dirs {
+            run(dir, &config);
+        }
+    } else {
+        let interactive = atty::is(Stream::Stdin);
 
-    args.values_of("dir").map_or_else(
-        || {
-            let interactive = atty::is(Stream::Stdin);
+        if interactive {
+            log::warning("input is read from terminal");
+            log::warning("only experts do this on purpose");
+            log::warning("you may have forgotten to either");
+            log::warning("- specify directories on the command line or");
+            log::warning("- pipe data into this tool");
+            log::warning("press CTRL-D or CTRL-C to exit");
+        }
 
-            if interactive {
-                log::warning("input is read from terminal");
-                log::warning("only experts do this on purpose");
-                log::warning("you may have forgotten to either");
-                log::warning("- specify directories on the command line or");
-                log::warning("- pipe data into this tool");
-                log::warning("press CTRL-D or CTRL-C to exit");
-            }
-
-            let lines = io::stdin().lines();
-            for line in lines {
-                let dir = line.unwrap();
-                run(&dir, &config);
-            }
-        },
-        |dirs| {
-            for dir in dirs {
-                run(dir, &config);
-            }
-        },
-    );
+        let lines = io::stdin().lines();
+        for line in lines {
+            let dir = line.unwrap();
+            run(Path::new(&dir), &config);
+        }
+    }
 }
 
-fn run(dir: &str, config: &Config) {
-    let result = usage::run(dir, config);
-
-    if let Err(error) = result {
-        log::error(format!("skipping directory {}: {}", dir, error));
+fn run(dir: &Path, config: &Config) {
+    log::debug(format!("running {} ...", dir.display()), config);
+    if let Err(error) = usage::run(dir, config) {
+        log::error(format!("skipping directory {}: {}", dir.display(), error));
     }
 }

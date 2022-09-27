@@ -13,6 +13,7 @@ categories = ["command-line-utilities", "filesystem"]
 edition = "2021"
 
 [dependencies]
+anyhow = "1"
 atty = "0.2"
 bstr = "1"
 bytesize = "1"
@@ -20,7 +21,7 @@ tempfile = "3"
 
 [dependencies.clap]
 version = "3"
-features = ["cargo"]
+features = ["cargo", "deprecated"]
 
 [profile.release]
 lto = true
