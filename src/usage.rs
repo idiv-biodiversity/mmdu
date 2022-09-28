@@ -107,48 +107,22 @@ pub fn run(dir: &Path, config: &Config) -> Result<()> {
 }
 
 fn sum(dir: &Path, report: &Path, config: &Config) -> io::Result<()> {
-    sum_consume(dir, report, config)
-}
-
-fn sum_consume(dir: &Path, report: &Path, config: &Config) -> io::Result<()> {
     if let Some(depth) = config.max_depth {
         let sizes = sum_depth(dir, depth, report, config)?;
 
-        for (dir, Acc { n, size }) in &sizes {
+        for (dir, Acc { inodes, bytes }) in sizes {
             // drop files and empty directories
             // they each have only one entry
-            if *n > 1 {
-                output(dir, *size);
+            if inodes > 1 {
+                output(&dir, inodes, bytes, config);
             }
         }
     } else {
-        let size = sum_total(report).unwrap();
-        output(dir, size);
+        let Acc { inodes, bytes } = sum_total(report).unwrap();
+        output(dir, inodes, bytes, config);
     };
 
     Ok(())
-}
-
-struct Acc {
-    n: u64,
-    size: u64,
-}
-
-impl Acc {
-    const fn new(n: u64, size: u64) -> Self {
-        Self { n, size }
-    }
-}
-
-impl AddAssign<(u64, u64)> for Acc {
-    fn add_assign(&mut self, other: (u64, u64)) {
-        let (n, size) = other;
-
-        *self = Self {
-            n: self.n + n,
-            size: self.size + size,
-        };
-    }
 }
 
 fn sum_depth(
@@ -170,9 +144,9 @@ fn sum_depth(
 
         let meta = groups.next().unwrap();
 
-        let size = meta.splitn_str(6, " ").nth(4).unwrap();
-        let size = size.to_str().unwrap();
-        let size: u64 = size.parse().unwrap();
+        let bytes = meta.splitn_str(6, " ").nth(4).unwrap();
+        let bytes = bytes.to_str().unwrap();
+        let bytes: u64 = bytes.parse().unwrap();
 
         let path = groups.next().unwrap().to_path().unwrap();
         let path_depth = path.iter().count();
@@ -188,31 +162,65 @@ fn sum_depth(
 
             dir_sums
                 .entry(prefix)
-                .and_modify(|x| *x += (1, size))
-                .or_insert_with(|| Acc::new(1, size));
+                .and_modify(|x| *x += bytes)
+                .or_insert_with(|| Acc { inodes: 1, bytes });
         }
     }
 
     Ok(dir_sums)
 }
 
-fn sum_total(report: &Path) -> io::Result<u64> {
-    let mut sum = 0;
+fn sum_total(report: &Path) -> io::Result<Acc> {
+    let mut sum = Acc::default();
 
-    if report.exists() {
-        let report = File::open(report)?;
-        let report = BufReader::new(report);
+    let report = File::open(report)?;
+    let report = BufReader::new(report);
 
-        for line in report.byte_lines() {
-            let line = line?;
+    for line in report.byte_lines() {
+        let line = line?;
 
-            let size = line.splitn_str(6, " ").nth(4).unwrap();
-            let size = size.to_str().unwrap();
-            let size: u64 = size.parse().unwrap();
+        let bytes = line.splitn_str(6, " ").nth(4).unwrap();
+        let bytes = bytes.to_str().unwrap();
+        let bytes: u64 = bytes.parse().unwrap();
 
-            sum += size;
-        }
+        sum += bytes;
     }
 
     Ok(sum)
+}
+
+// ----------------------------------------------------------------------------
+// accumulator
+// ----------------------------------------------------------------------------
+
+#[derive(Clone, Copy, Default)]
+struct Acc {
+    inodes: u64,
+    bytes: u64,
+}
+
+impl AddAssign<u64> for Acc {
+    fn add_assign(&mut self, bytes: u64) {
+        *self = Self {
+            inodes: self.inodes + 1,
+            bytes: self.bytes + bytes,
+        };
+    }
+}
+
+// ----------------------------------------------------------------------------
+// tests
+// ----------------------------------------------------------------------------
+
+#[cfg(test)]
+mod test {
+    use std::path::Path;
+
+    #[test]
+    fn total() {
+        let acc = super::sum_total(Path::new("src/mmdu.list.size")).unwrap();
+
+        assert_eq!(acc.inodes, 63);
+        assert_eq!(acc.bytes, 1_415_269);
+    }
 }

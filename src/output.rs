@@ -27,9 +27,18 @@ use std::path::Path;
 
 use bytesize::ByteSize;
 
-pub fn output(dir: &Path, size: u64) {
-    let size = humanize(size);
-    println!("{}\t{}", size, dir.display());
+use crate::config::Config;
+
+pub fn output(dir: &Path, inodes: u64, bytes: u64, config: &Config) {
+    let humanized = humanize(bytes);
+
+    if config.count_bytes && config.count_inodes {
+        println!("{}\t{}\t{}", humanized, inodes, dir.display());
+    } else if config.count_bytes {
+        println!("{}\t{}", humanized, dir.display());
+    } else if config.count_inodes {
+        println!("{}\t{}", inodes, dir.display());
+    }
 }
 
 fn humanize(bytes: u64) -> String {
