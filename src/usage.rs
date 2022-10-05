@@ -44,7 +44,7 @@ use crate::policy;
 pub fn run(dir: &Path, config: &Config) -> Result<()> {
     let tmp = if let Some(ref local_work_dir) = config.mm_local_work_dir {
         tempdir_in(local_work_dir).with_context(|| {
-            format!("creating tempdir in {}", local_work_dir)
+            format!("creating tempdir in {}", local_work_dir.display())
         })?
     } else {
         tempdir().context("creating temdir")?
@@ -71,11 +71,11 @@ pub fn run(dir: &Path, config: &Config) -> Result<()> {
     };
 
     if let Some(ref local_work_dir) = config.mm_local_work_dir {
-        command.args(["-s", local_work_dir]);
+        command.arg("-s").arg(local_work_dir);
     };
 
     if let Some(ref global_work_dir) = config.mm_global_work_dir {
-        command.args(["-g", global_work_dir]);
+        command.arg("-g").arg(global_work_dir);
     };
 
     log::debug(format!("command: {:?}", command), config);

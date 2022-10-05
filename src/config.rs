@@ -39,8 +39,8 @@ pub struct Config {
     pub debug: bool,
     pub max_depth: Option<usize>,
     pub mm_nodes: Option<String>,
-    pub mm_local_work_dir: Option<String>,
-    pub mm_global_work_dir: Option<String>,
+    pub mm_local_work_dir: Option<PathBuf>,
+    pub mm_global_work_dir: Option<PathBuf>,
     pub count_bytes: bool,
     pub count_inodes: bool,
 }
@@ -51,7 +51,7 @@ impl From<ArgMatches> for Config {
             .get_many::<PathBuf>("dir")
             .map(|x| x.map(ToOwned::to_owned).collect::<Vec<_>>());
 
-        let debug = args.contains_id("debug");
+        let debug = args.get_one::<bool>("debug").copied().unwrap_or_default();
 
         let max_depth = args
             .get_one::<usize>("max-depth")
@@ -61,10 +61,10 @@ impl From<ArgMatches> for Config {
         let mm_nodes = args.get_one::<String>("nodes").cloned();
 
         let mm_local_work_dir =
-            args.get_one::<String>("local-work-dir").cloned();
+            args.get_one::<PathBuf>("local-work-dir").cloned();
 
         let mm_global_work_dir =
-            args.get_one::<String>("global-work-dir").cloned();
+            args.get_one::<PathBuf>("global-work-dir").cloned();
 
         let (count_bytes, count_inodes) = cbi(&args);
 
@@ -83,34 +83,21 @@ impl From<ArgMatches> for Config {
 
 /// Returns whether to count block usage and/or inode usage.
 fn cbi(args: &ArgMatches) -> (bool, bool) {
-    let last_block = args
-        .indices_of("block")
-        .and_then(Iterator::last)
-        .unwrap_or_default();
+    let block = args.get_flag("block");
+    let inodes = args.get_flag("inodes");
+    let both = args.get_flag("both");
 
-    let last_inodes = args
-        .indices_of("inodes")
-        .and_then(Iterator::last)
-        .unwrap_or_default();
-
-    let last_both = args
-        .indices_of("both")
-        .and_then(Iterator::last)
-        .unwrap_or_default();
-
-    let last = [last_block, last_inodes, last_both]
-        .into_iter()
-        .max()
-        .unwrap();
-
-    if last == last_block {
-        (true, false)
-    } else if last == last_inodes {
-        (false, true)
-    } else {
-        (true, true)
+    // most conditions aren't possible due to `overrides_with_all`
+    match (block, inodes, both) {
+        (_, true, _) => (false, true),
+        (_, _, true) => (true, true),
+        _ => (true, false),
     }
 }
+
+// ----------------------------------------------------------------------------
+// tests
+// ----------------------------------------------------------------------------
 
 #[cfg(test)]
 mod test {
@@ -194,7 +181,7 @@ mod test {
 
         assert_eq!(
             (false, true),
-            super::cbi(&cli.clone().get_matches_from([
+            super::cbi(&cli.get_matches_from([
                 clap::crate_name!(),
                 "--both",
                 "--inodes"

@@ -20,8 +20,8 @@ bytesize = "1"
 tempfile = "3"
 
 [dependencies.clap]
-version = "3"
-features = ["cargo", "deprecated"]
+version = "4"
+features = ["cargo", "deprecated", "wrap_help"]
 
 [profile.release]
 lto = true

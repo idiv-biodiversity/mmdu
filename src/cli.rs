@@ -31,26 +31,26 @@ use clap::{crate_description, crate_name, crate_version};
 use clap::{Arg, ArgAction, Command};
 
 /// Returns command-line parser.
-pub fn build() -> Command<'static> {
+pub fn build() -> Command {
     let dir = Arg::new("dir")
+        .value_name("DIR")
+        .action(ArgAction::Append)
+        .value_parser(ValueParser::new(is_dir))
         .help("input directories")
         .long_help(
 "The input directories for which to gather information. If none are given, \
  directories are read from standard input.",
-        )
-        .multiple_values(true)
-        .action(ArgAction::Append)
-        .value_parser(ValueParser::new(is_dir));
+        );
 
     let debug = Arg::new("debug")
-        .hide_short_help(true)
         .long("debug")
+        .action(ArgAction::SetTrue)
+        .hide_short_help(true)
         .long_help("Print debug messages while running.");
 
     let max_depth = Arg::new("max-depth")
         .short('d')
         .long("max-depth")
-        .takes_value(true)
         .value_name("DEPTH")
         .help("output sub-directory depth")
         .long_help(
@@ -60,22 +60,32 @@ pub fn build() -> Command<'static> {
         )
         .value_parser(value_parser!(usize));
 
+    let help = Arg::new("help")
+        .short('?')
+        .long("help")
+        .help("print help (use --help to see all options)")
+        .long_help("Print help.")
+        .action(ArgAction::Help);
+
+    let version = Arg::new("version")
+        .long("version")
+        .help("print version")
+        .long_help("Print version.")
+        .action(ArgAction::Version);
+
     Command::new(crate_name!())
         .version(crate_version!())
         .about(crate_description!())
+        .max_term_width(100)
+        .disable_help_flag(true)
+        .disable_version_flag(true)
         .arg(dir)
         .args(output())
         .args(mmapplypolicy())
         .arg(max_depth)
         .arg(debug)
-        .mut_arg("help", |help| {
-            help.short('?')
-                .help("print help (use --help to see all options)")
-                .long_help("Print help.")
-        })
-        .mut_arg("version", |a| {
-            a.long_help("Print version.").hide_short_help(true)
-        })
+        .arg(help)
+        .arg(version)
         .after_help(
 "Differences to `du`: `mmdu` defaults to summarized and human readable output \
  and uses apparent size.",
@@ -86,33 +96,39 @@ pub fn build() -> Command<'static> {
 // argument groups
 // ----------------------------------------------------------------------------
 
-fn output() -> Vec<Arg<'static>> {
+fn output() -> Vec<Arg> {
     let block = Arg::new("block")
         .long("block")
+        .action(ArgAction::SetTrue)
+        .overrides_with_all(["inodes", "both"])
         .help("list block usage")
         .long_help("List block usage.")
         .display_order(1)
-        .help_heading("OUTPUT OPTIONS");
+        .help_heading("Counting");
 
     let inodes = Arg::new("inodes")
         .long("inodes")
+        .action(ArgAction::SetTrue)
+        .overrides_with_all(["block", "both"])
         .help("list inode usage")
         .long_help("List inode usage.")
         .display_order(2)
-        .help_heading("OUTPUT OPTIONS");
+        .help_heading("Counting");
 
     let both = Arg::new("both")
         .long("both")
+        .action(ArgAction::SetTrue)
+        .overrides_with_all(["block", "inodes"])
         .help("list both block usage and inode usage")
         .long_help("List both block usage and inode usage.")
         .display_order(3)
-        .help_heading("OUTPUT OPTIONS");
+        .help_heading("Counting");
 
     vec![block, inodes, both]
 }
 
 /// Returns arguments forwarded to `mmapplypolicy`.
-fn mmapplypolicy() -> Vec<Arg<'static>> {
+fn mmapplypolicy() -> Vec<Arg> {
     let nodes = Arg::new("nodes")
         .long("mm-N")
         .hide_short_help(true)
@@ -121,8 +137,7 @@ fn mmapplypolicy() -> Vec<Arg<'static>> {
  information, see `man mmapplypolicy`.",
         )
         .value_name("all|mount|Node,...|NodeFile|NodeClass")
-        .takes_value(true)
-        .help_heading("OPTIONS FORWARDED TO `mmapplypolicy`");
+        .help_heading("Options forwarded to `mmapplypolicy`");
 
     let global_work_dir = Arg::new("global-work-dir")
         .long("mm-g")
@@ -131,10 +146,9 @@ fn mmapplypolicy() -> Vec<Arg<'static>> {
 "Specify global work directory to use with `mmapplypolicy -g`. For detailed \
  information, see `man mmapplypolicy`.",
         )
-        .takes_value(true)
-        .value_name("dir")
+        .value_name("DIR")
         .value_parser(is_dir)
-        .help_heading("OPTIONS FORWARDED TO `mmapplypolicy`");
+        .help_heading("Options forwarded to `mmapplypolicy`");
 
     let local_work_dir = Arg::new("local-work-dir")
         .long("mm-s")
@@ -146,10 +160,9 @@ fn mmapplypolicy() -> Vec<Arg<'static>> {
  This might be too small for large directories. For detailed information \
  about the `-s` argument, see `man mmapplypolicy`.",
         )
-        .takes_value(true)
-        .value_name("dir")
+        .value_name("DIR")
         .value_parser(is_dir)
-        .help_heading("OPTIONS FORWARDED TO `mmapplypolicy`");
+        .help_heading("Options forwarded to `mmapplypolicy`");
 
     vec![nodes, local_work_dir, global_work_dir]
 }
@@ -169,5 +182,17 @@ fn is_dir(s: &str) -> Result<PathBuf, String> {
         Ok(path)
     } else {
         Err(format!("is not a directory: {:?}", path))
+    }
+}
+
+// ----------------------------------------------------------------------------
+// tests
+// ----------------------------------------------------------------------------
+
+#[cfg(test)]
+mod test {
+    #[test]
+    fn verify_cli() {
+        super::build().debug_assert();
     }
 }
