@@ -23,5 +23,9 @@ tempfile = "3"
 version = "4"
 features = ["cargo", "deprecated", "wrap_help"]
 
+[build-dependencies]
+clap = { version = "4", features = ["cargo"] }
+clap_mangen = "0.2"
+
 [profile.release]
 lto = true
