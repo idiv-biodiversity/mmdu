@@ -31,13 +31,14 @@ use crate::config::Config;
 
 pub fn output(dir: &Path, inodes: u64, bytes: u64, config: &Config) {
     let humanized = humanize(bytes);
+    let dir = dir.display();
 
     if config.count_bytes && config.count_inodes {
-        println!("{}\t{}\t{}", humanized, inodes, dir.display());
+        println!("{humanized}\t{inodes}\t{dir}");
     } else if config.count_bytes {
-        println!("{}\t{}", humanized, dir.display());
+        println!("{humanized}\t{dir}");
     } else if config.count_inodes {
-        println!("{}\t{}", inodes, dir.display());
+        println!("{inodes}\t{dir}");
     }
 }
 

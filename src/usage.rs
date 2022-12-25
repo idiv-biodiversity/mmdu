@@ -78,7 +78,7 @@ pub fn run(dir: &Path, config: &Config) -> Result<()> {
         command.arg("-g").arg(global_work_dir);
     };
 
-    log::debug(format!("command: {:?}", command), config);
+    log::debug(format!("command: {command:?}"), config);
 
     let mut child = command
         .stdout(Stdio::null())
@@ -152,13 +152,13 @@ fn sum_depth(
         let path_depth = path.iter().count();
         let path_suffix_depth = path_depth - prefix_depth;
 
-        log::debug(format!("path: {:?}", path), config);
+        log::debug(format!("path: {path:?}"), config);
 
         for depth in 0..=depth.min(path_suffix_depth) {
             let prefix: PathBuf =
                 path.iter().take(prefix_depth + depth).collect();
 
-            log::debug(format!("prefix: {:?}", prefix), config);
+            log::debug(format!("prefix: {prefix:?}"), config);
 
             dir_sums
                 .entry(prefix)
