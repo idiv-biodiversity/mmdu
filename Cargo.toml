@@ -14,9 +14,9 @@ edition = "2021"
 
 [dependencies]
 anyhow = "1"
-atty = "0.2"
 bstr = "1"
 bytesize = "1"
+is-terminal = "0.4"
 tempfile = "3"
 
 [dependencies.clap]

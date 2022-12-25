@@ -36,7 +36,7 @@ mod usage;
 use std::io;
 use std::path::Path;
 
-use atty::Stream;
+use is_terminal::IsTerminal;
 
 use crate::config::Config;
 
@@ -51,7 +51,7 @@ fn main() {
             run(dir, &config);
         }
     } else {
-        let interactive = atty::is(Stream::Stdin);
+        let interactive = std::io::stdin().is_terminal();
 
         if interactive {
             log::warning("input is read from terminal");
