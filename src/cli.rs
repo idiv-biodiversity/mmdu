@@ -25,7 +25,6 @@
 
 use std::path::PathBuf;
 
-use clap::builder::ValueParser;
 use clap::value_parser;
 use clap::{crate_description, crate_name, crate_version};
 use clap::{Arg, ArgAction, Command};
@@ -35,7 +34,7 @@ pub fn build() -> Command {
     let dir = Arg::new("dir")
         .value_name("DIR")
         .action(ArgAction::Append)
-        .value_parser(ValueParser::new(is_dir))
+        .value_parser(is_dir)
         .help("input directories")
         .long_help(
 "The input directories for which to gather information. If none are given, \
