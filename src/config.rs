@@ -1,6 +1,6 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *                                                                           *
- *  Copyright  (C)  2019-2022  Christian Krause                              *
+ *  Copyright  (C)  2019-2023  Christian Krause                              *
  *                                                                           *
  *  Christian Krause  <christian.krause@idiv.de>                             *
  *                                                                           *
