@@ -25,6 +25,8 @@
 
 #![deny(clippy::all)]
 #![warn(clippy::pedantic, clippy::nursery, clippy::cargo)]
+// ALLOW only windows deps ATM, we don't use these targets
+#![allow(clippy::multiple_crate_versions)]
 
 mod cli;
 mod config;
