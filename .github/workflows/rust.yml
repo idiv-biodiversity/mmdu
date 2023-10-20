@@ -10,7 +10,8 @@ on:
       - '**.rs'
   push:
     branches:
-      - master
+      - main
+      - wip/next
     paths:
       - 'Cargo.toml'
       - 'Cargo.lock'
