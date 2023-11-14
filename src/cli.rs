@@ -29,6 +29,10 @@ use clap::value_parser;
 use clap::{crate_description, crate_name, crate_version};
 use clap::{Arg, ArgAction, Command};
 
+pub const CONFLICT_FILTER: &str =
+    "the filter options --group and --user are in conflict, clap SHOULD NOT \
+     allow both to be present";
+
 /// Returns command-line parser.
 pub fn build() -> Command {
     let dir = Arg::new("dir")
@@ -80,6 +84,7 @@ pub fn build() -> Command {
         .disable_version_flag(true)
         .arg(dir)
         .args(output())
+        .args(filter())
         .args(mmapplypolicy())
         .arg(max_depth)
         .arg(debug)
@@ -124,6 +129,26 @@ fn output() -> Vec<Arg> {
         .help_heading("Counting");
 
     vec![block, inodes, both]
+}
+
+fn filter() -> Vec<Arg> {
+    let group = Arg::new("group")
+        .long("group")
+        .conflicts_with("user")
+        .help("filter by group")
+        .long_help("Consider only inodes owned by this group.")
+        .value_name("name|gid")
+        .help_heading("Filtering");
+
+    let user = Arg::new("user")
+        .long("user")
+        .conflicts_with("group")
+        .help("filter by user")
+        .long_help("Consider only inodes owned by this user.")
+        .value_name("name|uid")
+        .help_heading("Filtering");
+
+    vec![group, user]
 }
 
 /// Returns arguments forwarded to `mmapplypolicy`.

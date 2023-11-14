@@ -37,6 +37,7 @@ pub fn get() -> Config {
 pub struct Config {
     pub dirs: Option<Vec<PathBuf>>,
     pub debug: bool,
+    pub filter: Option<Filter>,
     pub max_depth: Option<usize>,
     pub mm_nodes: Option<String>,
     pub mm_local_work_dir: Option<PathBuf>,
@@ -52,6 +53,18 @@ impl From<ArgMatches> for Config {
             .map(|x| x.map(ToOwned::to_owned).collect::<Vec<_>>());
 
         let debug = args.get_one::<bool>("debug").copied().unwrap_or_default();
+
+        let group = args.get_one::<String>("group");
+        let user = args.get_one::<String>("user");
+
+        let filter = match (group, user) {
+            (None, None) => None,
+            (Some(group), None) => Some(Filter::Group(group.clone())),
+            (None, Some(user)) => Some(Filter::User(user.clone())),
+            (Some(_), Some(_)) => {
+                unreachable!("{}", crate::cli::CONFLICT_FILTER)
+            }
+        };
 
         let max_depth = args
             .get_one::<usize>("max-depth")
@@ -71,6 +84,7 @@ impl From<ArgMatches> for Config {
         Self {
             dirs,
             debug,
+            filter,
             max_depth,
             mm_nodes,
             mm_local_work_dir,
@@ -79,6 +93,12 @@ impl From<ArgMatches> for Config {
             count_inodes,
         }
     }
+}
+
+#[derive(Debug)]
+pub enum Filter {
+    Group(String),
+    User(String),
 }
 
 /// Returns whether to count block usage and/or inode usage.

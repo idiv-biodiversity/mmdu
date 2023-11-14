@@ -53,7 +53,7 @@ pub fn run(dir: &Path, config: &Config) -> Result<()> {
     let policy = tmp.path().join(".policy");
     let prefix = tmp.path().join(crate_name!());
 
-    policy::size(&policy).with_context(|| {
+    policy::size(&policy, config).with_context(|| {
         format!("writing policy file to {}", policy.display())
     })?;
 
