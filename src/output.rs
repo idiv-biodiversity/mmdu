@@ -27,23 +27,25 @@ use std::path::Path;
 
 use bytesize::ByteSize;
 
-use crate::config::Config;
+use crate::config::{ByteMode, Config, CountMode};
 
 pub fn output(dir: &Path, inodes: u64, bytes: u64, config: &Config) {
-    let humanized = humanize(bytes);
+    let humanized = match config.byte_mode {
+        ByteMode::FileSize => humanize(ByteSize::b(bytes)),
+        ByteMode::KBAllocated => humanize(ByteSize::kib(bytes)),
+    };
+
     let dir = dir.display();
 
-    if config.count_bytes && config.count_inodes {
-        println!("{humanized}\t{inodes}\t{dir}");
-    } else if config.count_bytes {
-        println!("{humanized}\t{dir}");
-    } else if config.count_inodes {
-        println!("{inodes}\t{dir}");
+    match config.count_mode {
+        CountMode::Both => println!("{humanized}\t{inodes}\t{dir}"),
+        CountMode::Bytes => println!("{humanized}\t{dir}"),
+        CountMode::Inodes => println!("{inodes}\t{dir}"),
     }
 }
 
-fn humanize(bytes: u64) -> String {
-    ByteSize(bytes)
+fn humanize(bytes: ByteSize) -> String {
+    bytes
         .to_string_as(true)
         .replace("iB", "")
         .replace(' ', "")

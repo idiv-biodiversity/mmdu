@@ -42,8 +42,8 @@ pub struct Config {
     pub mm_nodes: Option<String>,
     pub mm_local_work_dir: Option<PathBuf>,
     pub mm_global_work_dir: Option<PathBuf>,
-    pub count_bytes: bool,
-    pub count_inodes: bool,
+    pub byte_mode: ByteMode,
+    pub count_mode: CountMode,
 }
 
 impl From<ArgMatches> for Config {
@@ -79,7 +79,13 @@ impl From<ArgMatches> for Config {
         let mm_global_work_dir =
             args.get_one::<PathBuf>("global-work-dir").cloned();
 
-        let (count_bytes, count_inodes) = cbi(&args);
+        let byte_mode = if args.get_flag("kb-allocated") {
+            ByteMode::KBAllocated
+        } else {
+            ByteMode::FileSize
+        };
+
+        let count_mode = CountMode::from(&args);
 
         Self {
             dirs,
@@ -89,8 +95,8 @@ impl From<ArgMatches> for Config {
             mm_nodes,
             mm_local_work_dir,
             mm_global_work_dir,
-            count_bytes,
-            count_inodes,
+            byte_mode,
+            count_mode,
         }
     }
 }
@@ -101,17 +107,40 @@ pub enum Filter {
     User(String),
 }
 
-/// Returns whether to count block usage and/or inode usage.
-fn cbi(args: &ArgMatches) -> (bool, bool) {
-    let block = args.get_flag("block");
-    let inodes = args.get_flag("inodes");
-    let both = args.get_flag("both");
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ByteMode {
+    FileSize,
+    KBAllocated,
+}
 
-    // most conditions aren't possible due to `overrides_with_all`
-    match (block, inodes, both) {
-        (_, true, _) => (false, true),
-        (_, _, true) => (true, true),
-        _ => (true, false),
+impl ByteMode {
+    pub const fn policy_attribute(self) -> &'static str {
+        match self {
+            Self::FileSize => "FILE_SIZE",
+            Self::KBAllocated => "KB_ALLOCATED",
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum CountMode {
+    Inodes,
+    Bytes,
+    Both,
+}
+
+impl From<&ArgMatches> for CountMode {
+    fn from(args: &ArgMatches) -> Self {
+        let block = args.get_flag("block");
+        let inodes = args.get_flag("inodes");
+        let both = args.get_flag("both");
+
+        // most conditions aren't possible due to `overrides_with_all`
+        match (block, inodes, both) {
+            (_, true, _) => Self::Inodes,
+            (_, _, true) => Self::Both,
+            _ => Self::Bytes,
+        }
     }
 }
 
@@ -120,43 +149,54 @@ fn cbi(args: &ArgMatches) -> (bool, bool) {
 // ----------------------------------------------------------------------------
 
 #[cfg(test)]
+impl From<ArgMatches> for CountMode {
+    fn from(args: ArgMatches) -> Self {
+        Self::from(&args)
+    }
+}
+
+#[cfg(test)]
 mod test {
+    use super::CountMode;
+
     #[test]
-    fn cbi() {
+    fn count_mode() {
         let cli = crate::cli::build();
 
         assert_eq!(
-            (true, false),
-            super::cbi(&cli.clone().get_matches_from([clap::crate_name!()]))
+            CountMode::Bytes,
+            CountMode::from(
+                cli.clone().get_matches_from([clap::crate_name!()])
+            )
         );
 
         assert_eq!(
-            (true, false),
-            super::cbi(
-                &cli.clone()
+            CountMode::Bytes,
+            CountMode::from(
+                cli.clone()
                     .get_matches_from([clap::crate_name!(), "--block"])
             )
         );
 
         assert_eq!(
-            (false, true),
-            super::cbi(
-                &cli.clone()
+            CountMode::Inodes,
+            CountMode::from(
+                cli.clone()
                     .get_matches_from([clap::crate_name!(), "--inodes"])
             )
         );
 
         assert_eq!(
-            (true, true),
-            super::cbi(
-                &cli.clone()
+            CountMode::Both,
+            CountMode::from(
+                cli.clone()
                     .get_matches_from([clap::crate_name!(), "--both"])
             )
         );
 
         assert_eq!(
-            (false, true),
-            super::cbi(&cli.clone().get_matches_from([
+            CountMode::Inodes,
+            CountMode::from(cli.clone().get_matches_from([
                 clap::crate_name!(),
                 "--block",
                 "--inodes"
@@ -164,8 +204,8 @@ mod test {
         );
 
         assert_eq!(
-            (true, true),
-            super::cbi(&cli.clone().get_matches_from([
+            CountMode::Both,
+            CountMode::from(cli.clone().get_matches_from([
                 clap::crate_name!(),
                 "--block",
                 "--both"
@@ -173,8 +213,8 @@ mod test {
         );
 
         assert_eq!(
-            (true, false),
-            super::cbi(&cli.clone().get_matches_from([
+            CountMode::Bytes,
+            CountMode::from(cli.clone().get_matches_from([
                 clap::crate_name!(),
                 "--inodes",
                 "--block"
@@ -182,8 +222,8 @@ mod test {
         );
 
         assert_eq!(
-            (true, true),
-            super::cbi(&cli.clone().get_matches_from([
+            CountMode::Both,
+            CountMode::from(cli.clone().get_matches_from([
                 clap::crate_name!(),
                 "--inodes",
                 "--both"
@@ -191,8 +231,8 @@ mod test {
         );
 
         assert_eq!(
-            (true, false),
-            super::cbi(&cli.clone().get_matches_from([
+            CountMode::Bytes,
+            CountMode::from(cli.clone().get_matches_from([
                 clap::crate_name!(),
                 "--both",
                 "--block"
@@ -200,8 +240,8 @@ mod test {
         );
 
         assert_eq!(
-            (false, true),
-            super::cbi(&cli.get_matches_from([
+            CountMode::Inodes,
+            CountMode::from(cli.get_matches_from([
                 clap::crate_name!(),
                 "--both",
                 "--inodes"

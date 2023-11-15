@@ -32,10 +32,12 @@ use crate::config::{Config, Filter};
 pub fn size(file: &Path, config: &Config) -> io::Result<()> {
     let mut file = File::create(file)?;
 
+    let attribute = config.byte_mode.policy_attribute();
+
     let content = match &config.filter {
-        Some(Filter::Group(group)) => policy_group(group),
-        Some(Filter::User(user)) => policy_user(user),
-        None => String::from(POLICY_DEFAULT),
+        Some(Filter::Group(group)) => policy_group(group, attribute),
+        Some(Filter::User(user)) => policy_user(user, attribute),
+        None => policy_default(attribute),
     };
 
     file.write_all(content.as_bytes())?;
@@ -43,7 +45,7 @@ pub fn size(file: &Path, config: &Config) -> io::Result<()> {
     Ok(())
 }
 
-fn policy_group(group: &str) -> String {
+fn policy_group(group: &str, attribute: &str) -> String {
     format!(
         "RULE
   EXTERNAL LIST 'size'
@@ -52,13 +54,13 @@ fn policy_group(group: &str) -> String {
 RULE 'TOTAL'
   LIST 'size'
   DIRECTORIES_PLUS
-  SHOW(VARCHAR(FILE_SIZE))
+  SHOW(VARCHAR({attribute}))
   WHERE GROUP_ID = {group}
 "
     )
 }
 
-fn policy_user(user: &str) -> String {
+fn policy_user(user: &str, attribute: &str) -> String {
     format!(
         "RULE
   EXTERNAL LIST 'size'
@@ -67,18 +69,22 @@ fn policy_user(user: &str) -> String {
 RULE 'TOTAL'
   LIST 'size'
   DIRECTORIES_PLUS
-  SHOW(VARCHAR(FILE_SIZE))
+  SHOW(VARCHAR({attribute}))
   WHERE USER_ID = {user}
 "
     )
 }
 
-const POLICY_DEFAULT: &str = "RULE
+fn policy_default(attribute: &str) -> String {
+    format!(
+        "RULE
   EXTERNAL LIST 'size'
   EXEC ''
 
 RULE 'TOTAL'
   LIST 'size'
   DIRECTORIES_PLUS
-  SHOW(VARCHAR(FILE_SIZE))
-";
+  SHOW(VARCHAR({attribute}))
+"
+    )
+}

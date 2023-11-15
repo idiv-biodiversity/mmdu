@@ -92,7 +92,7 @@ pub fn build() -> Command {
         .arg(version)
         .after_help(
 "Differences to `du`: `mmdu` defaults to summarized and human readable output \
- and uses apparent size.",
+ and uses apparent size, i.e. `FILE_SIZE` as the policy attribute.",
         )
 }
 
@@ -128,7 +128,17 @@ fn output() -> Vec<Arg> {
         .display_order(3)
         .help_heading("Counting");
 
-    vec![block, inodes, both]
+    let kb_allocated = Arg::new("kb-allocated")
+        .long("kb-allocated")
+        .action(ArgAction::SetTrue)
+        .help("KB_ALLOCATED instead of FILE_SIZE")
+        .long_help(
+            "Use KB_ALLOCATED instead of FILE_SIZE as the policy attribute.",
+        )
+        .display_order(4)
+        .help_heading("Counting");
+
+    vec![block, inodes, both, kb_allocated]
 }
 
 fn filter() -> Vec<Arg> {
