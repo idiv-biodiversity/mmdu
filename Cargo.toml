@@ -17,7 +17,6 @@ rust-version = "1.70"
 anyhow = "1"
 bstr = "1"
 bytesize = "1"
-is-terminal = "0.4"
 tempfile = "3"
 
 [dependencies.clap]

@@ -35,10 +35,8 @@ mod output;
 mod policy;
 mod usage;
 
-use std::io;
+use std::io::{self, IsTerminal};
 use std::path::Path;
-
-use is_terminal::IsTerminal;
 
 use crate::config::Config;
 
