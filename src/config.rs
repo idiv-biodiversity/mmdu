@@ -25,19 +25,21 @@
 
 use std::path::PathBuf;
 
+use anyhow::{anyhow, Context, Result};
 use clap::ArgMatches;
+use libc::uid_t;
 
-pub fn get() -> Config {
+pub fn get() -> Result<Config> {
     let cli = crate::cli::build();
     let args = cli.get_matches();
-    Config::from(args)
+    Config::try_from(args)
 }
 
 #[derive(Debug)]
 pub struct Config {
     pub dirs: Option<Vec<PathBuf>>,
     pub debug: bool,
-    pub filter: Option<Filter>,
+    pub filter: Filter,
     pub max_depth: Option<usize>,
     pub mm_nodes: Option<String>,
     pub mm_local_work_dir: Option<PathBuf>,
@@ -46,25 +48,17 @@ pub struct Config {
     pub count_mode: CountMode,
 }
 
-impl From<ArgMatches> for Config {
-    fn from(args: ArgMatches) -> Self {
+impl TryFrom<ArgMatches> for Config {
+    type Error = anyhow::Error;
+
+    fn try_from(args: ArgMatches) -> Result<Self> {
         let dirs = args
             .get_many::<PathBuf>("dir")
             .map(|x| x.map(ToOwned::to_owned).collect::<Vec<_>>());
 
         let debug = args.get_one::<bool>("debug").copied().unwrap_or_default();
 
-        let group = args.get_one::<String>("group");
-        let user = args.get_one::<String>("user");
-
-        let filter = match (group, user) {
-            (None, None) => None,
-            (Some(group), None) => Some(Filter::Group(group.clone())),
-            (None, Some(user)) => Some(Filter::User(user.clone())),
-            (Some(_), Some(_)) => {
-                unreachable!("{}", crate::cli::CONFLICT_FILTER)
-            }
-        };
+        let filter = Filter::try_from(&args)?;
 
         let max_depth = args
             .get_one::<usize>("max-depth")
@@ -87,7 +81,7 @@ impl From<ArgMatches> for Config {
 
         let count_mode = CountMode::from(&args);
 
-        Self {
+        Ok(Self {
             dirs,
             debug,
             filter,
@@ -97,14 +91,87 @@ impl From<ArgMatches> for Config {
             mm_global_work_dir,
             byte_mode,
             count_mode,
-        }
+        })
     }
 }
 
 #[derive(Debug)]
 pub enum Filter {
-    Group(String),
-    User(String),
+    Group(uid_t),
+    User(uid_t),
+    None,
+}
+
+impl Filter {
+    fn group_to_gid(group: &str) -> Result<uid_t> {
+        let is_gid = group.chars().all(char::is_numeric);
+
+        if is_gid {
+            let gid = group.parse::<uid_t>().with_context(|| {
+                format!("failed to parse {group} as `uid_t`")
+            })?;
+
+            let entry = pwd_grp::getgrgid(gid).with_context(|| {
+                format!("searching group database for {group}")
+            })?;
+
+            entry
+                .ok_or_else(|| anyhow!("group {group} not found"))
+                .map(|_| gid)
+        } else {
+            let entry = pwd_grp::getgrnam(group).with_context(|| {
+                format!("searching group database for {group}")
+            })?;
+
+            entry
+                .ok_or_else(|| anyhow!("group {group} not found"))
+                .map(|group| group.gid)
+        }
+    }
+
+    fn user_to_uid(user: &str) -> Result<uid_t> {
+        let is_uid = user.chars().all(char::is_numeric);
+
+        if is_uid {
+            let uid = user.parse::<uid_t>().with_context(|| {
+                format!("failed to parse {user} as `uid_t`")
+            })?;
+
+            let entry = pwd_grp::getpwuid(uid).with_context(|| {
+                format!("searching passwd database for {user}")
+            })?;
+
+            entry
+                .ok_or_else(|| anyhow!("user {user} not found"))
+                .map(|_| uid)
+        } else {
+            let entry = pwd_grp::getpwnam(user).with_context(|| {
+                format!("searching passwd database for {user}")
+            })?;
+
+            entry
+                .ok_or_else(|| anyhow!("user {user} not found"))
+                .map(|passwd| passwd.uid)
+        }
+    }
+}
+
+impl TryFrom<&ArgMatches> for Filter {
+    type Error = anyhow::Error;
+
+    fn try_from(args: &ArgMatches) -> Result<Self> {
+        let group = args.get_one::<String>("group");
+        let user = args.get_one::<String>("user");
+
+        match (group, user) {
+            (None, None) => Ok(Self::None),
+            (Some(group), None) => Self::group_to_gid(group).map(Self::Group),
+            (None, Some(user)) => Self::user_to_uid(user).map(Self::User),
+            (Some(_), Some(_)) => {
+                unreachable!("{}", crate::cli::CONFLICT_FILTER)
+            }
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

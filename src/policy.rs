@@ -27,6 +27,8 @@ use std::fs::File;
 use std::io::{self, Write};
 use std::path::Path;
 
+use libc::uid_t;
+
 use crate::config::{Config, Filter};
 
 pub fn size(file: &Path, config: &Config) -> io::Result<()> {
@@ -35,9 +37,9 @@ pub fn size(file: &Path, config: &Config) -> io::Result<()> {
     let attribute = config.byte_mode.policy_attribute();
 
     let content = match &config.filter {
-        Some(Filter::Group(group)) => policy_group(group, attribute),
-        Some(Filter::User(user)) => policy_user(user, attribute),
-        None => policy_default(attribute),
+        Filter::Group(group) => policy_group(*group, attribute),
+        Filter::User(user) => policy_user(*user, attribute),
+        Filter::None => policy_default(attribute),
     };
 
     file.write_all(content.as_bytes())?;
@@ -45,7 +47,7 @@ pub fn size(file: &Path, config: &Config) -> io::Result<()> {
     Ok(())
 }
 
-fn policy_group(group: &str, attribute: &str) -> String {
+fn policy_group(group: uid_t, attribute: &str) -> String {
     format!(
         "RULE
   EXTERNAL LIST 'size'
@@ -60,7 +62,7 @@ RULE 'TOTAL'
     )
 }
 
-fn policy_user(user: &str, attribute: &str) -> String {
+fn policy_user(user: uid_t, attribute: &str) -> String {
     format!(
         "RULE
   EXTERNAL LIST 'size'

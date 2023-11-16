@@ -38,10 +38,12 @@ mod usage;
 use std::io::{self, IsTerminal};
 use std::path::Path;
 
+use anyhow::Result;
+
 use crate::config::Config;
 
-fn main() {
-    let config = config::get();
+fn main() -> Result<()> {
+    let config = config::get()?;
     log::debug(format!("{config:#?}"), &config);
 
     // ALLOW if let is easier to comprehend
@@ -68,6 +70,8 @@ fn main() {
             run(Path::new(&dir), &config);
         }
     }
+
+    Ok(())
 }
 
 fn run(dir: &Path, config: &Config) {
