@@ -78,6 +78,6 @@ fn run(dir: &Path, config: &Config) {
     log::debug(format!("running {} ...", dir.display()), config);
     if let Err(error) = usage::run(dir, config) {
         let dir = dir.display();
-        log::error(format!("skipping directory {dir}: {error}"));
+        log::error(format!("skipping directory {dir}: {error:#}"));
     }
 }

@@ -25,7 +25,7 @@
 
 use std::collections::BTreeMap;
 use std::fs::File;
-use std::io::{self, BufReader};
+use std::io::BufReader;
 use std::ops::AddAssign;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
@@ -106,7 +106,7 @@ pub fn run(dir: &Path, config: &Config) -> Result<()> {
     }
 }
 
-fn sum(dir: &Path, report: &Path, config: &Config) -> io::Result<()> {
+fn sum(dir: &Path, report: &Path, config: &Config) -> Result<()> {
     if let Some(depth) = config.max_depth {
         let sizes = sum_depth(dir, depth, report, config)?;
 
@@ -118,7 +118,7 @@ fn sum(dir: &Path, report: &Path, config: &Config) -> io::Result<()> {
             }
         }
     } else {
-        let Acc { inodes, bytes } = sum_total(report).unwrap();
+        let Acc { inodes, bytes } = sum_total(report)?;
         output(dir, inodes, bytes, config);
     };
 
@@ -130,8 +130,15 @@ fn sum_depth(
     depth: usize,
     report: &Path,
     config: &Config,
-) -> io::Result<BTreeMap<PathBuf, Acc>> {
-    let report = File::open(report)?;
+) -> Result<BTreeMap<PathBuf, Acc>> {
+    let report = File::open(report).with_context(|| {
+        format!(
+            "opening report {} (this is likely because applying a \
+             filter didn't return any results)",
+            report.display()
+        )
+    })?;
+
     let report = BufReader::new(report);
 
     let mut dir_sums = BTreeMap::new();
@@ -170,10 +177,17 @@ fn sum_depth(
     Ok(dir_sums)
 }
 
-fn sum_total(report: &Path) -> io::Result<Acc> {
+fn sum_total(report: &Path) -> Result<Acc> {
     let mut sum = Acc::default();
 
-    let report = File::open(report)?;
+    let report = File::open(report).with_context(|| {
+        format!(
+            "opening report {} (this is likely because applying a \
+             filter didn't return any results)",
+            report.display()
+        )
+    })?;
+
     let report = BufReader::new(report);
 
     for line in report.byte_lines() {
