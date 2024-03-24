@@ -23,8 +23,6 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-use std::path::PathBuf;
-
 use anyhow::{anyhow, Context, Result};
 use clap::ArgMatches;
 use libc::{gid_t, uid_t};
@@ -35,8 +33,8 @@ pub struct Config {
     pub count_links: bool,
     pub max_depth: Option<usize>,
     pub mm_nodes: Option<String>,
-    pub mm_local_work_dir: Option<PathBuf>,
-    pub mm_global_work_dir: Option<PathBuf>,
+    pub mm_local_work_dir: Option<String>,
+    pub mm_global_work_dir: Option<String>,
     pub byte_mode: ByteMode,
     pub count_mode: CountMode,
 }
@@ -57,10 +55,10 @@ impl TryFrom<&ArgMatches> for Config {
         let mm_nodes = args.get_one::<String>("nodes").cloned();
 
         let mm_local_work_dir =
-            args.get_one::<PathBuf>("local-work-dir").cloned();
+            args.get_one::<String>("local-work-dir").cloned();
 
         let mm_global_work_dir =
-            args.get_one::<PathBuf>("global-work-dir").cloned();
+            args.get_one::<String>("global-work-dir").cloned();
 
         let byte_mode = if args.get_flag("kb-allocated") {
             ByteMode::KBAllocated

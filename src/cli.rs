@@ -206,7 +206,7 @@ fn mmapplypolicy() -> Vec<Arg> {
 // argument validator
 // ----------------------------------------------------------------------------
 
-fn is_dir(s: &str) -> Result<PathBuf, String> {
+fn is_dir(s: &str) -> Result<String, String> {
     let path = PathBuf::from(s);
 
     if !path.exists() {
@@ -214,7 +214,7 @@ fn is_dir(s: &str) -> Result<PathBuf, String> {
     } else if !path.is_absolute() {
         Err(format!("is not absolute: {path:?}"))
     } else if path.is_dir() {
-        Ok(path)
+        Ok(s.into())
     } else {
         Err(format!("is not a directory: {path:?}"))
     }

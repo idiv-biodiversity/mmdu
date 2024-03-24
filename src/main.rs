@@ -34,10 +34,11 @@ mod output;
 mod policy;
 mod usage;
 
-use std::io::{self, IsTerminal};
 use std::path::{Path, PathBuf};
 
 use anyhow::Result;
+use args_or_stdin::ValuesRefExt;
+use clap::crate_name;
 
 use crate::config::Config;
 
@@ -52,29 +53,12 @@ fn main() -> Result<()> {
     #[cfg(feature = "log")]
     log::debug!("{config:#?}");
 
-    // ALLOW if let is easier to comprehend
-    #[allow(clippy::option_if_let_else)]
-    if let Some(dirs) = args.get_many::<PathBuf>("dir") {
-        for dir in dirs {
-            run(dir, &config);
-        }
-    } else {
-        let interactive = std::io::stdin().is_terminal();
+    let dirs = args.get_many::<String>("dir");
 
-        if interactive {
-            eprintln!("input is read from terminal");
-            eprintln!("only experts do this on purpose");
-            eprintln!("you may have forgotten to either");
-            eprintln!("- specify directories on the command line or");
-            eprintln!("- pipe data into this tool");
-            eprintln!("press CTRL-D or CTRL-C to exit");
-        }
-
-        let lines = io::stdin().lines();
-        for line in lines {
-            let dir = line.unwrap();
-            run(Path::new(&dir), &config);
-        }
+    for dir in dirs.or_stdin(crate_name!()) {
+        let dir = dir?;
+        let dir = PathBuf::from(dir.into_owned());
+        run(&dir, &config);
     }
 
     Ok(())

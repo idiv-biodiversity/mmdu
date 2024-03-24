@@ -17,6 +17,7 @@ rust-version = "1.74"
 log = ["dep:log", "dep:env_logger"]
 
 [dependencies]
+args-or-stdin = { path = "../../rce/args-or-stdin" }
 anyhow = "1"
 bstr = "1"
 bytesize = "1"

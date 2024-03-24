@@ -41,9 +41,8 @@ use crate::policy::{self, Entry};
 
 pub fn run(dir: &Path, config: &Config) -> Result<()> {
     let tmp = if let Some(ref local_work_dir) = config.mm_local_work_dir {
-        tempdir_in(local_work_dir).with_context(|| {
-            format!("creating tempdir in {}", local_work_dir.display())
-        })?
+        tempdir_in(local_work_dir)
+            .with_context(|| format!("creating tempdir in {local_work_dir}"))?
     } else {
         tempdir().context("creating temdir")?
     };
