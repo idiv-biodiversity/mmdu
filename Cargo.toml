@@ -11,7 +11,7 @@ repository = "https://github.com/idiv-biodiversity/mmdu"
 keywords = ["disk", "usage", "gpfs", "spectrum-scale"]
 categories = ["command-line-utilities", "filesystem"]
 edition = "2021"
-rust-version = "1.70"
+rust-version = "1.74"
 
 [dependencies]
 anyhow = "1"
