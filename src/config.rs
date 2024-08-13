@@ -104,20 +104,12 @@ pub enum Filter {
 
 impl Filter {
     fn group_to_gid(group: &str) -> Result<gid_t> {
-        let is_gid = group.chars().all(char::is_numeric);
+        let is_numeric = group.chars().all(char::is_numeric);
 
-        if is_gid {
-            let gid = group.parse::<gid_t>().with_context(|| {
-                format!("failed to parse {group} as `gid_t`")
-            })?;
-
-            let entry = pwd_grp::getgrgid(gid).with_context(|| {
-                format!("searching group database for {group}")
-            })?;
-
-            entry
-                .ok_or_else(|| anyhow!("group {group} not found"))
-                .map(|_| gid)
+        if is_numeric {
+            group
+                .parse::<gid_t>()
+                .with_context(|| format!("failed to parse {group} as `gid_t`"))
         } else {
             let entry = pwd_grp::getgrnam(group).with_context(|| {
                 format!("searching group database for {group}")
@@ -130,20 +122,11 @@ impl Filter {
     }
 
     fn user_to_uid(user: &str) -> Result<uid_t> {
-        let is_uid = user.chars().all(char::is_numeric);
+        let is_numeric = user.chars().all(char::is_numeric);
 
-        if is_uid {
-            let uid = user.parse::<uid_t>().with_context(|| {
-                format!("failed to parse {user} as `uid_t`")
-            })?;
-
-            let entry = pwd_grp::getpwuid(uid).with_context(|| {
-                format!("searching passwd database for {user}")
-            })?;
-
-            entry
-                .ok_or_else(|| anyhow!("user {user} not found"))
-                .map(|_| uid)
+        if is_numeric {
+            user.parse::<uid_t>()
+                .with_context(|| format!("failed to parse {user} as `uid_t`"))
         } else {
             let entry = pwd_grp::getpwnam(user).with_context(|| {
                 format!("searching passwd database for {user}")
