@@ -27,7 +27,7 @@ use std::path::PathBuf;
 
 use anyhow::{anyhow, Context, Result};
 use clap::ArgMatches;
-use libc::uid_t;
+use libc::{gid_t, uid_t};
 
 pub fn get() -> Result<Config> {
     let cli = crate::cli::build();
@@ -97,18 +97,18 @@ impl TryFrom<ArgMatches> for Config {
 
 #[derive(Debug)]
 pub enum Filter {
-    Group(uid_t),
+    Group(gid_t),
     User(uid_t),
     None,
 }
 
 impl Filter {
-    fn group_to_gid(group: &str) -> Result<uid_t> {
+    fn group_to_gid(group: &str) -> Result<gid_t> {
         let is_gid = group.chars().all(char::is_numeric);
 
         if is_gid {
-            let gid = group.parse::<uid_t>().with_context(|| {
-                format!("failed to parse {group} as `uid_t`")
+            let gid = group.parse::<gid_t>().with_context(|| {
+                format!("failed to parse {group} as `gid_t`")
             })?;
 
             let entry = pwd_grp::getgrgid(gid).with_context(|| {

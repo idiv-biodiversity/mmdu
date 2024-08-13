@@ -27,7 +27,7 @@ use std::fs::File;
 use std::io::{self, Write};
 use std::path::Path;
 
-use libc::uid_t;
+use libc::{gid_t, uid_t};
 
 use crate::config::{Config, Filter};
 
@@ -47,7 +47,7 @@ pub fn size(file: &Path, config: &Config) -> io::Result<()> {
     Ok(())
 }
 
-fn policy_group(group: uid_t, attribute: &str) -> String {
+fn policy_group(group: gid_t, attribute: &str) -> String {
     format!(
         "RULE
   EXTERNAL LIST 'size'
