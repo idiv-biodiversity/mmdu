@@ -44,7 +44,7 @@ use crate::config::Config;
 
 fn main() -> Result<()> {
     let config = config::get()?;
-    log::debug(format!("{config:#?}"), &config);
+    log::debug(format!("{config:#?}"), config.debug);
 
     // ALLOW if let is easier to comprehend
     #[allow(clippy::option_if_let_else)]
@@ -75,7 +75,7 @@ fn main() -> Result<()> {
 }
 
 fn run(dir: &Path, config: &Config) {
-    log::debug(format!("running {} ...", dir.display()), config);
+    log::debug(format!("running {} ...", dir.display()), config.debug);
     if let Err(error) = usage::run(dir, config) {
         let dir = dir.display();
         log::error(format!("skipping directory {dir}: {error:#}"));

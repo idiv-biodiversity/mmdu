@@ -25,10 +25,8 @@
 
 use clap::crate_name;
 
-use crate::config::Config;
-
-pub fn debug<S: AsRef<str>>(message: S, config: &Config) {
-    if config.debug {
+pub fn debug<S: AsRef<str>>(message: S, debug: bool) {
+    if debug {
         eprintln!("[debug] {}", message.as_ref());
     }
 }
