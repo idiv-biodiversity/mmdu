@@ -63,6 +63,17 @@ pub fn build() -> Command {
         )
         .value_parser(value_parser!(usize));
 
+    let count_links = Arg::new("count-links")
+        .short('l')
+        .long("count-links")
+        .action(ArgAction::SetTrue)
+        .hide_short_help(true)
+        .long_help(
+"Count sizes many times if hard linked. The default behavior is to count each \
+ hard linked object only once for each point of interest, i.e. once for every \
+ DIR and once for every sub-directory if max depth is used."
+        );
+
     let kb_allocated = Arg::new("kb-allocated")
         .long("kb-allocated")
         .action(ArgAction::SetTrue)
@@ -95,6 +106,7 @@ pub fn build() -> Command {
         .args(filter())
         .args(mmapplypolicy())
         .arg(max_depth)
+        .arg(count_links)
         .arg(kb_allocated)
         .arg(debug)
         .arg(help)

@@ -23,7 +23,7 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 use std::fs::File;
 use std::io::{BufReader, Read};
 use std::ops::AddAssign;
@@ -32,14 +32,13 @@ use std::process::{Command, Stdio};
 
 use anyhow::{anyhow, Context, Result};
 use bstr::io::BufReadExt;
-use bstr::ByteSlice;
 use clap::crate_name;
 use tempfile::{tempdir, tempdir_in};
 
 use crate::config::Config;
 use crate::log;
 use crate::output::output;
-use crate::policy;
+use crate::policy::{self, Entry};
 
 pub fn run(dir: &Path, config: &Config) -> Result<()> {
     let tmp = if let Some(ref local_work_dir) = config.mm_local_work_dir {
@@ -116,17 +115,14 @@ fn sum(dir: &Path, report: &Path, config: &Config) -> Result<()> {
     })?;
 
     if let Some(depth) = config.max_depth {
-        let sizes = sum_depth(dir, depth, report, config.debug)?;
+        let sizes =
+            sum_depth(dir, depth, report, config.count_links, config.debug)?;
 
         for (dir, Acc { inodes, bytes }) in sizes {
-            // drop files and empty directories
-            // they each have only one entry
-            if inodes > 1 {
-                output(&dir, inodes, bytes, config);
-            }
+            output(&dir, inodes, bytes, config);
         }
     } else {
-        let Acc { inodes, bytes } = sum_total(report)?;
+        let Acc { inodes, bytes } = sum_total(report, config.count_links)?;
         output(dir, inodes, bytes, config);
     };
 
@@ -137,25 +133,24 @@ fn sum_depth(
     dir: &Path,
     depth: usize,
     report: impl Read,
+    count_links: bool,
     debug: bool,
 ) -> Result<BTreeMap<PathBuf, Acc>> {
     let report = BufReader::new(report);
 
-    let mut dir_sums = BTreeMap::new();
+    let mut sums: HashMap<PathBuf, DepthAcc> = HashMap::new();
+
     let prefix_depth = Path::new(dir).iter().count();
 
     for line in report.byte_lines() {
         let line = line.context("reading line from policy report")?;
+        let entry = Entry::try_from(&line)?;
 
-        let mut groups = line.splitn_str(2, " -- ");
+        let bytes = entry.bytes()?;
+        let nlink = entry.nlink_str()?;
+        let inode = entry.inode_str()?;
 
-        let meta = groups.next().unwrap();
-
-        let bytes = meta.splitn_str(6, " ").nth(4).unwrap();
-        let bytes = bytes.to_str().unwrap();
-        let bytes: u64 = bytes.parse().unwrap();
-
-        let path = groups.next().unwrap().to_path().unwrap();
+        let path = entry.path()?;
         let path_depth = path.iter().count();
         let path_suffix_depth = path_depth - prefix_depth;
 
@@ -167,29 +162,73 @@ fn sum_depth(
 
             log::debug(format!("prefix: {prefix:?}"), debug);
 
-            dir_sums
-                .entry(prefix)
-                .and_modify(|x| *x += bytes)
-                .or_insert_with(|| Acc { inodes: 1, bytes });
+            if count_links || nlink == "1" {
+                sums.entry(prefix)
+                    .and_modify(|v| v.acc += bytes)
+                    .or_insert_with(|| DepthAcc::new(bytes));
+            } else {
+                sums.entry(prefix)
+                    .and_modify(|v| {
+                        let inode = v
+                            .hard_links
+                            .entry(inode.to_owned())
+                            .and_modify(|c| *c += 1)
+                            .or_insert(1);
+
+                        if *inode == 1 {
+                            v.acc += bytes;
+                        }
+                    })
+                    .or_insert_with(|| {
+                        let mut hard_links = HashMap::new();
+                        hard_links.insert(inode.to_owned(), 1);
+
+                        DepthAcc {
+                            acc: Acc::new(bytes),
+                            hard_links,
+                        }
+                    });
+            }
         }
     }
 
-    Ok(dir_sums)
+    Ok(sums
+        .into_iter()
+        .filter_map(|(path, v)| (v.acc.inodes > 1).then_some((path, v.acc)))
+        .collect())
 }
 
-fn sum_total(report: impl Read) -> Result<Acc> {
-    let report = BufReader::new(report);
-
+fn sum_total(report: impl Read, count_links: bool) -> Result<Acc> {
     let mut sum = Acc::default();
+    let mut hard_links: HashMap<String, u64> = HashMap::new();
 
-    for line in report.byte_lines() {
+    for line in BufReader::new(report).byte_lines() {
         let line = line.context("reading line from policy report")?;
+        let entry = Entry::try_from(&line)?;
 
-        let bytes = line.splitn_str(6, " ").nth(4).unwrap();
-        let bytes = bytes.to_str().unwrap();
-        let bytes: u64 = bytes.parse().unwrap();
+        let bytes = entry.bytes()?;
 
-        sum += bytes;
+        if count_links {
+            sum += bytes;
+            continue;
+        }
+
+        let nlink = entry.nlink_str()?;
+
+        if nlink == "1" {
+            sum += bytes;
+            continue;
+        }
+
+        let inode = entry.inode_str()?;
+        let inode = hard_links
+            .entry(inode.to_owned())
+            .and_modify(|c| *c += 1)
+            .or_insert(1);
+
+        if *inode == 1 {
+            sum += bytes;
+        }
     }
 
     Ok(sum)
@@ -203,6 +242,12 @@ fn sum_total(report: impl Read) -> Result<Acc> {
 struct Acc {
     inodes: u64,
     bytes: u64,
+}
+
+impl Acc {
+    const fn new(bytes: u64) -> Self {
+        Self { inodes: 1, bytes }
+    }
 }
 
 impl AddAssign<u64> for Acc {
@@ -221,6 +266,20 @@ impl From<(u64, u64)> for Acc {
     }
 }
 
+struct DepthAcc {
+    acc: Acc,
+    hard_links: HashMap<String, u64>,
+}
+
+impl DepthAcc {
+    fn new(bytes: u64) -> Self {
+        Self {
+            acc: Acc::new(bytes),
+            hard_links: HashMap::new(),
+        }
+    }
+}
+
 // ----------------------------------------------------------------------------
 // tests
 // ----------------------------------------------------------------------------
@@ -230,29 +289,63 @@ mod test {
     use super::*;
 
     #[test]
-    fn total_simple() {
-        let source = "1 1 0  1024 1 -- /data/test/foo\n\
-                      2 1 0  1024 1 -- /data/test/bar\n";
+    fn total() {
+        let source = "1 1 0  4096 1 -- /data/test\n\
+                      1 1 0  1024 3 -- /data/test/foo\n\
+                      1 1 0  1024 3 -- /data/test/bar\n\
+                      1 1 0  1024 3 -- /data/test/baz\n\
+                      2 1 0  1024 2 -- /data/test/other\n";
 
-        let result = sum_total(source.as_bytes()).unwrap();
+        let once = sum_total(source.as_bytes(), false).unwrap();
+        assert_eq!(Acc::from((3, 6144)), once);
 
-        assert_eq!(Acc::from((2, 2048)), result);
+        let many = sum_total(source.as_bytes(), true).unwrap();
+        assert_eq!(Acc::from((5, 8192)), many);
     }
 
     #[test]
-    fn depth_simple() {
-        let source = "1 1 0  1024 1 -- /data/test/a/foo\n\
-                      2 1 0  1024 1 -- /data/test/b/bar\n";
+    fn depth() {
+        let source = "1 1 0  4096 1 -- /data/test\n\
+                      1 1 0  1024 5 -- /data/test/foo\n\
+                      1 1 0  1024 5 -- /data/test/bar\n\
+                      2 1 0  1024 2 -- /data/test/other\n\
+                      1 1 0  4096 1 -- /data/test/a\n\
+                      1 1 0  1024 5 -- /data/test/a/foo\n\
+                      1 1 0  1024 5 -- /data/test/a/bar\n\
+                      1 1 0  4096 1 -- /data/test/b\n\
+                      1 1 0  1024 5 -- /data/test/b/foo\n\
+                      2 1 0  1024 2 -- /data/test/b/other\n";
 
-        let mut expected = BTreeMap::new();
-        expected.insert("/data/test".into(), Acc::from((2, 2048)));
-        expected.insert("/data/test/a".into(), Acc::from((1, 1024)));
-        expected.insert("/data/test/b".into(), Acc::from((1, 1024)));
+        let mut once = BTreeMap::new();
+        once.insert("/data/test".into(), Acc::from((5, 14336)));
+        once.insert("/data/test/a".into(), Acc::from((2, 5120)));
+        once.insert("/data/test/b".into(), Acc::from((3, 6144)));
 
-        let result =
-            sum_depth(Path::new("/data/test"), 1, source.as_bytes(), false)
-                .unwrap();
+        let result = sum_depth(
+            Path::new("/data/test"),
+            1,
+            source.as_bytes(),
+            false,
+            false,
+        )
+        .unwrap();
 
-        assert_eq!(expected, result);
+        assert_eq!(once, result);
+
+        let mut many = BTreeMap::new();
+        many.insert("/data/test".into(), Acc::from((10, 19456)));
+        many.insert("/data/test/a".into(), Acc::from((3, 6144)));
+        many.insert("/data/test/b".into(), Acc::from((3, 6144)));
+
+        let result = sum_depth(
+            Path::new("/data/test"),
+            1,
+            source.as_bytes(),
+            true,
+            false,
+        )
+        .unwrap();
+
+        assert_eq!(many, result);
     }
 }

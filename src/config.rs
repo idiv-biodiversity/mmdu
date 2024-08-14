@@ -40,6 +40,7 @@ pub struct Config {
     pub dirs: Option<Vec<PathBuf>>,
     pub debug: bool,
     pub filter: Filter,
+    pub count_links: bool,
     pub max_depth: Option<usize>,
     pub mm_nodes: Option<String>,
     pub mm_local_work_dir: Option<PathBuf>,
@@ -59,6 +60,8 @@ impl TryFrom<ArgMatches> for Config {
         let debug = args.get_one::<bool>("debug").copied().unwrap_or_default();
 
         let filter = Filter::try_from(&args)?;
+
+        let count_links = args.get_flag("count-links");
 
         let max_depth = args
             .get_one::<usize>("max-depth")
@@ -85,6 +88,7 @@ impl TryFrom<ArgMatches> for Config {
             dirs,
             debug,
             filter,
+            count_links,
             max_depth,
             mm_nodes,
             mm_local_work_dir,
