@@ -171,7 +171,7 @@ fn mmapplypolicy() -> Vec<Arg> {
  information, see `man mmapplypolicy`.",
         )
         .value_name("all|mount|Node,...|NodeFile|NodeClass")
-        .help_heading("Options forwarded to `mmapplypolicy`");
+        .help_heading("Forwarded to `mmapplypolicy`");
 
     let global_work_dir = Arg::new("global-work-dir")
         .long("mm-g")
@@ -182,7 +182,7 @@ fn mmapplypolicy() -> Vec<Arg> {
         )
         .value_name("DIR")
         .value_parser(is_dir)
-        .help_heading("Options forwarded to `mmapplypolicy`");
+        .help_heading("Forwarded to `mmapplypolicy`");
 
     let local_work_dir = Arg::new("local-work-dir")
         .long("mm-s")
@@ -196,7 +196,7 @@ fn mmapplypolicy() -> Vec<Arg> {
         )
         .value_name("DIR")
         .value_parser(is_dir)
-        .help_heading("Options forwarded to `mmapplypolicy`");
+        .help_heading("Forwarded to `mmapplypolicy`");
 
     vec![nodes, local_work_dir, global_work_dir]
 }
