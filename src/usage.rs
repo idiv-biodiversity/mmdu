@@ -145,7 +145,7 @@ fn sum_depth(
     let prefix_depth = Path::new(dir).iter().count();
 
     for line in report.byte_lines() {
-        let line = line?;
+        let line = line.context("reading line from policy report")?;
 
         let mut groups = line.splitn_str(2, " -- ");
 
@@ -183,7 +183,7 @@ fn sum_total(report: impl Read) -> Result<Acc> {
     let mut sum = Acc::default();
 
     for line in report.byte_lines() {
-        let line = line?;
+        let line = line.context("reading line from policy report")?;
 
         let bytes = line.splitn_str(6, " ").nth(4).unwrap();
         let bytes = bytes.to_str().unwrap();
