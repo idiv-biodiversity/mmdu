@@ -63,6 +63,14 @@ pub fn build() -> Command {
         )
         .value_parser(value_parser!(usize));
 
+    let kb_allocated = Arg::new("kb-allocated")
+        .long("kb-allocated")
+        .action(ArgAction::SetTrue)
+        .help("KB_ALLOCATED instead of FILE_SIZE")
+        .long_help(
+            "Use KB_ALLOCATED instead of FILE_SIZE as the policy attribute.",
+        );
+
     let help = Arg::new("help")
         .short('?')
         .long("help")
@@ -83,10 +91,11 @@ pub fn build() -> Command {
         .disable_help_flag(true)
         .disable_version_flag(true)
         .arg(dir)
-        .args(output())
+        .args(output_fields())
         .args(filter())
         .args(mmapplypolicy())
         .arg(max_depth)
+        .arg(kb_allocated)
         .arg(debug)
         .arg(help)
         .arg(version)
@@ -100,45 +109,32 @@ pub fn build() -> Command {
 // argument groups
 // ----------------------------------------------------------------------------
 
-fn output() -> Vec<Arg> {
+fn output_fields() -> Vec<Arg> {
     let block = Arg::new("block")
         .long("block")
         .action(ArgAction::SetTrue)
         .overrides_with_all(["inodes", "both"])
-        .help("list block usage")
-        .long_help("List block usage.")
-        .display_order(1)
-        .help_heading("Counting");
+        .help("show only block usage (default)")
+        .long_help("Show only block usage. This is the default.")
+        .help_heading("Output Fields");
 
     let inodes = Arg::new("inodes")
         .long("inodes")
         .action(ArgAction::SetTrue)
         .overrides_with_all(["block", "both"])
-        .help("list inode usage")
-        .long_help("List inode usage.")
-        .display_order(2)
-        .help_heading("Counting");
+        .help("show only inode usage")
+        .long_help("Show only inode usage.")
+        .help_heading("Output Fields");
 
     let both = Arg::new("both")
         .long("both")
         .action(ArgAction::SetTrue)
         .overrides_with_all(["block", "inodes"])
-        .help("list both block usage and inode usage")
-        .long_help("List both block usage and inode usage.")
-        .display_order(3)
-        .help_heading("Counting");
+        .help("show both block usage and inode usage")
+        .long_help("Show both block usage and inode usage.")
+        .help_heading("Output Fields");
 
-    let kb_allocated = Arg::new("kb-allocated")
-        .long("kb-allocated")
-        .action(ArgAction::SetTrue)
-        .help("KB_ALLOCATED instead of FILE_SIZE")
-        .long_help(
-            "Use KB_ALLOCATED instead of FILE_SIZE as the policy attribute.",
-        )
-        .display_order(4)
-        .help_heading("Counting");
-
-    vec![block, inodes, both, kb_allocated]
+    vec![block, inodes, both]
 }
 
 fn filter() -> Vec<Arg> {
