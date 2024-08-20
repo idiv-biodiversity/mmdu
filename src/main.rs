@@ -36,19 +36,22 @@ mod policy;
 mod usage;
 
 use std::io::{self, IsTerminal};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use anyhow::Result;
 
 use crate::config::Config;
 
 fn main() -> Result<()> {
-    let config = config::get()?;
+    let cli = crate::cli::build();
+    let args = cli.get_matches();
+
+    let config = Config::try_from(&args)?;
     log::debug(format!("{config:#?}"), config.debug);
 
     // ALLOW if let is easier to comprehend
     #[allow(clippy::option_if_let_else)]
-    if let Some(dirs) = &config.dirs {
+    if let Some(dirs) = args.get_many::<PathBuf>("dir") {
         for dir in dirs {
             run(dir, &config);
         }

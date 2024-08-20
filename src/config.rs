@@ -29,15 +29,8 @@ use anyhow::{anyhow, Context, Result};
 use clap::ArgMatches;
 use libc::{gid_t, uid_t};
 
-pub fn get() -> Result<Config> {
-    let cli = crate::cli::build();
-    let args = cli.get_matches();
-    Config::try_from(args)
-}
-
 #[derive(Debug)]
 pub struct Config {
-    pub dirs: Option<Vec<PathBuf>>,
     pub debug: bool,
     pub filter: Filter,
     pub count_links: bool,
@@ -49,17 +42,13 @@ pub struct Config {
     pub count_mode: CountMode,
 }
 
-impl TryFrom<ArgMatches> for Config {
+impl TryFrom<&ArgMatches> for Config {
     type Error = anyhow::Error;
 
-    fn try_from(args: ArgMatches) -> Result<Self> {
-        let dirs = args
-            .get_many::<PathBuf>("dir")
-            .map(|x| x.map(ToOwned::to_owned).collect::<Vec<_>>());
-
+    fn try_from(args: &ArgMatches) -> Result<Self> {
         let debug = args.get_one::<bool>("debug").copied().unwrap_or_default();
 
-        let filter = Filter::try_from(&args)?;
+        let filter = Filter::try_from(args)?;
 
         let count_links = args.get_flag("count-links");
 
@@ -82,10 +71,9 @@ impl TryFrom<ArgMatches> for Config {
             ByteMode::FileSize
         };
 
-        let count_mode = CountMode::from(&args);
+        let count_mode = CountMode::from(args);
 
         Ok(Self {
-            dirs,
             debug,
             filter,
             count_links,
