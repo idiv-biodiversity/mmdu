@@ -1,7 +1,8 @@
 mmdu
 ====
 
-Disk usage for [IBM Spectrum Scale][] (formerly GPFS) file systems.
+Disk usage for [IBM Storage Scale][] (formerly Spectrum Scale, formerly GPFS)
+file systems.
 
 -   uses `mmapplypolicy` instead of universal directory traversal
 
@@ -51,5 +52,5 @@ install -Dm755 target/release/mmdu ~/bin/mmdu
 ```
 
 
-[IBM Spectrum Scale]: https://www.ibm.com/products/spectrum-scale
+[IBM Storage Scale]: https://www.ibm.com/products/storage-scale
 [coreutils]: https://www.gnu.org/software/coreutils/
