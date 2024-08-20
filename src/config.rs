@@ -31,7 +31,6 @@ use libc::{gid_t, uid_t};
 
 #[derive(Debug)]
 pub struct Config {
-    pub debug: bool,
     pub filter: Filter,
     pub count_links: bool,
     pub max_depth: Option<usize>,
@@ -46,8 +45,6 @@ impl TryFrom<&ArgMatches> for Config {
     type Error = anyhow::Error;
 
     fn try_from(args: &ArgMatches) -> Result<Self> {
-        let debug = args.get_one::<bool>("debug").copied().unwrap_or_default();
-
         let filter = Filter::try_from(args)?;
 
         let count_links = args.get_flag("count-links");
@@ -74,7 +71,6 @@ impl TryFrom<&ArgMatches> for Config {
         let count_mode = CountMode::from(args);
 
         Ok(Self {
-            debug,
             filter,
             count_links,
             max_depth,

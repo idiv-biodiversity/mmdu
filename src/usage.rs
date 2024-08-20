@@ -36,7 +36,6 @@ use clap::crate_name;
 use tempfile::{tempdir, tempdir_in};
 
 use crate::config::Config;
-use crate::log;
 use crate::output::output;
 use crate::policy::{self, Entry};
 
@@ -77,7 +76,8 @@ pub fn run(dir: &Path, config: &Config) -> Result<()> {
         command.arg("-g").arg(global_work_dir);
     };
 
-    log::debug(format!("command: {command:?}"), config.debug);
+    #[cfg(feature = "log")]
+    log::debug!("command: {command:?}");
 
     let mut child = command
         .stdout(Stdio::null())
@@ -115,8 +115,7 @@ fn sum(dir: &Path, report: &Path, config: &Config) -> Result<()> {
     })?;
 
     if let Some(depth) = config.max_depth {
-        let sizes =
-            sum_depth(dir, depth, report, config.count_links, config.debug)?;
+        let sizes = sum_depth(dir, depth, report, config.count_links)?;
 
         for (dir, Acc { inodes, bytes }) in sizes {
             output(&dir, inodes, bytes, config);
@@ -134,7 +133,6 @@ fn sum_depth(
     depth: usize,
     report: impl Read,
     count_links: bool,
-    debug: bool,
 ) -> Result<BTreeMap<PathBuf, Acc>> {
     let report = BufReader::new(report);
 
@@ -154,13 +152,9 @@ fn sum_depth(
         let path_depth = path.iter().count();
         let path_suffix_depth = path_depth - prefix_depth;
 
-        log::debug(format!("path: {path:?}"), debug);
-
         for depth in 0..=depth.min(path_suffix_depth) {
             let prefix: PathBuf =
                 path.iter().take(prefix_depth + depth).collect();
-
-            log::debug(format!("prefix: {prefix:?}"), debug);
 
             if count_links || nlink == "1" {
                 sums.entry(prefix)
@@ -321,14 +315,9 @@ mod test {
         once.insert("/data/test/a".into(), Acc::from((2, 5120)));
         once.insert("/data/test/b".into(), Acc::from((3, 6144)));
 
-        let result = sum_depth(
-            Path::new("/data/test"),
-            1,
-            source.as_bytes(),
-            false,
-            false,
-        )
-        .unwrap();
+        let result =
+            sum_depth(Path::new("/data/test"), 1, source.as_bytes(), false)
+                .unwrap();
 
         assert_eq!(once, result);
 
@@ -337,14 +326,9 @@ mod test {
         many.insert("/data/test/a".into(), Acc::from((3, 6144)));
         many.insert("/data/test/b".into(), Acc::from((3, 6144)));
 
-        let result = sum_depth(
-            Path::new("/data/test"),
-            1,
-            source.as_bytes(),
-            true,
-            false,
-        )
-        .unwrap();
+        let result =
+            sum_depth(Path::new("/data/test"), 1, source.as_bytes(), true)
+                .unwrap();
 
         assert_eq!(many, result);
     }

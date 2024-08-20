@@ -30,7 +30,6 @@
 
 mod cli;
 mod config;
-mod log;
 mod output;
 mod policy;
 mod usage;
@@ -43,11 +42,15 @@ use anyhow::Result;
 use crate::config::Config;
 
 fn main() -> Result<()> {
-    let cli = crate::cli::build();
-    let args = cli.get_matches();
+    #[cfg(feature = "log")]
+    env_logger::init();
 
+    let cli = cli::build();
+    let args = cli.get_matches();
     let config = Config::try_from(&args)?;
-    log::debug(format!("{config:#?}"), config.debug);
+
+    #[cfg(feature = "log")]
+    log::debug!("{config:#?}");
 
     // ALLOW if let is easier to comprehend
     #[allow(clippy::option_if_let_else)]
@@ -59,12 +62,12 @@ fn main() -> Result<()> {
         let interactive = std::io::stdin().is_terminal();
 
         if interactive {
-            log::warning("input is read from terminal");
-            log::warning("only experts do this on purpose");
-            log::warning("you may have forgotten to either");
-            log::warning("- specify directories on the command line or");
-            log::warning("- pipe data into this tool");
-            log::warning("press CTRL-D or CTRL-C to exit");
+            eprintln!("input is read from terminal");
+            eprintln!("only experts do this on purpose");
+            eprintln!("you may have forgotten to either");
+            eprintln!("- specify directories on the command line or");
+            eprintln!("- pipe data into this tool");
+            eprintln!("press CTRL-D or CTRL-C to exit");
         }
 
         let lines = io::stdin().lines();
@@ -78,9 +81,16 @@ fn main() -> Result<()> {
 }
 
 fn run(dir: &Path, config: &Config) {
-    log::debug(format!("running {} ...", dir.display()), config.debug);
+    #[cfg(feature = "log")]
+    log::debug!("running with directory {} ...", dir.display());
+
     if let Err(error) = usage::run(dir, config) {
         let dir = dir.display();
-        log::error(format!("skipping directory {dir}: {error:#}"));
+
+        #[cfg(not(feature = "log"))]
+        eprintln!("{}: skipping {dir}: {error:?}", clap::crate_name!());
+
+        #[cfg(feature = "log")]
+        log::warn!("skipping directory {dir}: {error:#}");
     }
 }

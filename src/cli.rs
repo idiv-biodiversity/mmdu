@@ -45,12 +45,6 @@ pub fn build() -> Command {
  directories are read from standard input.",
         );
 
-    let debug = Arg::new("debug")
-        .long("debug")
-        .action(ArgAction::SetTrue)
-        .hide_short_help(true)
-        .long_help("Print debug messages while running.");
-
     let max_depth = Arg::new("max-depth")
         .short('d')
         .long("max-depth")
@@ -108,7 +102,6 @@ pub fn build() -> Command {
         .arg(max_depth)
         .arg(count_links)
         .arg(kb_allocated)
-        .arg(debug)
         .arg(help)
         .arg(version)
         .after_help(
