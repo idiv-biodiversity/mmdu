@@ -38,7 +38,9 @@ pub fn sum(report: impl Read, count_links: bool) -> Result<Acc> {
 
     for line in BufReader::new(report).byte_lines() {
         let line = line.context("reading line from policy report")?;
-        let entry = Entry::try_from(&line)?;
+
+        let entry = Entry::try_from(&line)
+            .context("parsing line from policy report")?;
 
         let bytes = entry.bytes()?;
 
