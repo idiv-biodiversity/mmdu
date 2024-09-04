@@ -100,34 +100,24 @@ impl Entry<'_> {
     const INVALID: &'static str = "invalid line in policy report";
 
     pub fn inode_str(&self) -> Result<&str> {
-        self.0[0]
-            .to_str()
-            .context("reading inode field from policy report")
+        self.0[0].to_str().context("reading inode field")
     }
 
     pub fn bytes_str(&self) -> Result<&str> {
-        self.0[4]
-            .to_str()
-            .context("reading bytes field from policy report")
+        self.0[4].to_str().context("reading bytes field")
     }
 
     pub fn bytes(&self) -> Result<u64> {
-        self.bytes_str().and_then(|s| {
-            s.parse::<u64>()
-                .context("parsing bytes field from policy report")
-        })
+        self.bytes_str()
+            .and_then(|s| s.parse().context("parsing bytes field"))
     }
 
     pub fn nlink_str(&self) -> Result<&str> {
-        self.0[5]
-            .to_str()
-            .context("reading number of links field from policy report")
+        self.0[5].to_str().context("reading number of links field")
     }
 
     pub fn path(&self) -> Result<&Path> {
-        self.1
-            .to_path()
-            .context("parsing path field from policy report")
+        self.1.to_path().context("parsing path field")
     }
 }
 
