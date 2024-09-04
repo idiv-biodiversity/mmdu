@@ -280,15 +280,19 @@ impl DepthAcc {
 
 #[cfg(test)]
 mod test {
+    use indoc::indoc;
+
     use super::*;
 
     #[test]
     fn total() {
-        let source = "1 1 0  4096 1 -- /data/test\n\
-                      1 1 0  1024 3 -- /data/test/foo\n\
-                      1 1 0  1024 3 -- /data/test/bar\n\
-                      1 1 0  1024 3 -- /data/test/baz\n\
-                      2 1 0  1024 2 -- /data/test/other\n";
+        let source = indoc! {"
+            1 1 0  4096 1 -- /data/test
+            1 1 0  1024 3 -- /data/test/foo
+            1 1 0  1024 3 -- /data/test/bar
+            1 1 0  1024 3 -- /data/test/baz
+            2 1 0  1024 2 -- /data/test/other
+        "};
 
         let once = sum_total(source.as_bytes(), false).unwrap();
         assert_eq!(Acc::from((3, 6144)), once);
@@ -299,16 +303,18 @@ mod test {
 
     #[test]
     fn depth() {
-        let source = "1 1 0  4096 1 -- /data/test\n\
-                      1 1 0  1024 5 -- /data/test/foo\n\
-                      1 1 0  1024 5 -- /data/test/bar\n\
-                      2 1 0  1024 2 -- /data/test/other\n\
-                      1 1 0  4096 1 -- /data/test/a\n\
-                      1 1 0  1024 5 -- /data/test/a/foo\n\
-                      1 1 0  1024 5 -- /data/test/a/bar\n\
-                      1 1 0  4096 1 -- /data/test/b\n\
-                      1 1 0  1024 5 -- /data/test/b/foo\n\
-                      2 1 0  1024 2 -- /data/test/b/other\n";
+        let source = indoc! {"
+            1 1 0  4096 1 -- /data/test
+            1 1 0  1024 5 -- /data/test/foo
+            1 1 0  1024 5 -- /data/test/bar
+            2 1 0  1024 2 -- /data/test/other
+            1 1 0  4096 1 -- /data/test/a
+            1 1 0  1024 5 -- /data/test/a/foo
+            1 1 0  1024 5 -- /data/test/a/bar
+            1 1 0  4096 1 -- /data/test/b
+            1 1 0  1024 5 -- /data/test/b/foo
+            2 1 0  1024 2 -- /data/test/b/other
+        "};
 
         let mut once = BTreeMap::new();
         once.insert("/data/test".into(), Acc::from((5, 14336)));

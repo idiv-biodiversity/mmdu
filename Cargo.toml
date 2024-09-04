@@ -35,5 +35,8 @@ clap = { version = "4", features = ["cargo"] }
 clap_complete = "4"
 clap_mangen = "0.2"
 
+[dev-dependencies]
+indoc = "2"
+
 [profile.release]
 lto = true
