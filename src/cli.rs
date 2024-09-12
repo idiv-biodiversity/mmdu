@@ -80,7 +80,7 @@ pub fn build() -> Command {
         .short('?')
         .long("help")
         .help("print help (use --help to see all options)")
-        .long_help("Print help.")
+        .long_help("Print help. Use -? to see a short option listing.")
         .action(ArgAction::Help);
 
     let version = Arg::new("version")
