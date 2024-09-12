@@ -29,78 +29,65 @@ mod total;
 use std::fs::File;
 use std::ops::AddAssign;
 use std::path::Path;
-use std::process::{Command, Stdio};
 
 use anyhow::{Context, Result, anyhow};
 use clap::crate_name;
 use tempfile::{tempdir, tempdir_in};
 
-use crate::config::Config;
+use crate::config::{ByteMode, Config, Filter};
 use crate::output::output;
+use mmpolicy::prelude::*;
 
 pub fn run(dir: &Path, config: &Config) -> Result<()> {
-    let tmp = if let Some(ref local_work_dir) = config.mm_local_work_dir {
-        tempdir_in(local_work_dir).with_context(|| {
-            format!("creating tempdir in {}", local_work_dir.display())
-        })?
-    } else {
-        tempdir().context("creating temdir")?
+    let mut policy = Policy::new(crate_name!());
+
+    policy.rules.push(Rule::from(RuleType::ExternalList(
+        Name("size".into()),
+        Exec(String::new()),
+    )));
+
+    let byte_mode = match config.byte_mode {
+        ByteMode::FileSize => Show::FileSize,
+        ByteMode::KBAllocated => Show::KbAllocated,
     };
 
-    let policy = tmp.path().join(".policy");
-    let prefix = tmp.path().join(crate_name!());
+    let filter = match &config.filter {
+        Filter::Group(group) => Some(Where::Group(*group)),
+        Filter::User(user) => Some(Where::User(*user)),
+        Filter::None => None,
+    };
 
-    crate::policy::size(&policy, config).with_context(|| {
-        format!("writing policy file to {}", policy.display())
-    })?;
+    policy.rules.push(Rule::from(RuleType::List(
+        Name("size".into()),
+        DirectoriesPlus(true),
+        vec![byte_mode, Show::Nlink],
+        filter,
+    )));
 
-    let mut command = Command::new("mmapplypolicy");
-    command
-        .arg(dir)
-        .args(["-P", policy.to_str().unwrap()])
-        .args(["-f", prefix.to_str().unwrap()])
-        .args(["--choice-algorithm", "fast"])
-        .args(["-I", "defer"])
-        .args(["-L", "0"]);
-
-    if let Some(ref nodes) = config.mm_nodes {
-        command.args(["-N", nodes]);
-    }
-
-    if let Some(ref local_work_dir) = config.mm_local_work_dir {
-        command.arg("-s").arg(local_work_dir);
-    }
-
-    if let Some(ref global_work_dir) = config.mm_global_work_dir {
-        command.arg("-g").arg(global_work_dir);
-    }
-
-    #[cfg(feature = "log")]
-    log::debug!("command: {command:?}");
-
-    let mut child = command
-        .stdout(Stdio::null())
-        .spawn()
-        .context("`mmapplypolicy` command failed to start")?;
-
-    let ecode = child.wait().context("failed waiting on `mmapplypolicy`")?;
-
-    if ecode.success() {
-        let report = tmp.path().join("mmdu.list.size");
-
-        sum(dir, &report, config)?;
-
-        Ok(())
-    } else {
-        // ALLOW if let is easier to comprehend
-        #[allow(clippy::option_if_let_else)]
-        let e = if let Some(rc) = ecode.code() {
-            anyhow!("`mmapplypolicy` failed with exit status {rc}")
+    let tmp =
+        if let Some(local_work_dir) = &config.mm_runoptions.local_work_dir {
+            tempdir_in(local_work_dir).with_context(|| {
+                format!("creating tempdir in {}", local_work_dir.display())
+            })?
         } else {
-            anyhow!("`mmapplypolicy` failed")
+            tempdir().context("creating temdir")?
         };
 
-        Err(e)
+    let policy_path = tmp.path().join(".policy");
+    let prefix = tmp.path().join(crate_name!());
+
+    let reports = policy.run(
+        dir.as_os_str(),
+        policy_path,
+        Some(&prefix),
+        &config.mm_runoptions,
+    )?;
+
+    // from the policies above, we expect exactly one external list
+    if reports.len() == 1 {
+        sum(dir, &reports[0], config)
+    } else {
+        Err(anyhow!("unexpected number of reports: {}", reports.len()))
     }
 }
 

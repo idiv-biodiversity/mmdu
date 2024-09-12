@@ -98,7 +98,7 @@ pub fn build() -> Command {
         .arg(dir)
         .args(output_fields())
         .args(filter())
-        .args(mmapplypolicy())
+        .args(mmpolicy::clap::args_parallel())
         .arg(max_depth)
         .arg(count_links)
         .arg(kb_allocated)
@@ -160,46 +160,6 @@ fn filter() -> Vec<Arg> {
         .help_heading("Filtering");
 
     vec![group, user]
-}
-
-/// Returns arguments forwarded to `mmapplypolicy`.
-fn mmapplypolicy() -> Vec<Arg> {
-    let nodes = Arg::new("nodes")
-        .long("mm-N")
-        .hide_short_help(true)
-        .long_help(
-"Specify list of nodes to use with `mmapplypolicy -N`. For detailed \
- information, see `man mmapplypolicy`.",
-        )
-        .value_name("all|mount|Node,...|NodeFile|NodeClass")
-        .help_heading("Forwarded to `mmapplypolicy`");
-
-    let global_work_dir = Arg::new("global-work-dir")
-        .long("mm-g")
-        .hide_short_help(true)
-        .long_help(
-"Specify global work directory to use with `mmapplypolicy -g`. For detailed \
- information, see `man mmapplypolicy`.",
-        )
-        .value_name("DIR")
-        .value_parser(is_dir)
-        .help_heading("Forwarded to `mmapplypolicy`");
-
-    let local_work_dir = Arg::new("local-work-dir")
-        .long("mm-s")
-        .hide_short_help(true)
-        .long_help(
-"Specify local work directory to use with `mmapplypolicy -s`. Also, the \
- policy LIST output will be written to this directory temporarily before \
- being processed by this tool. Defaults to the system temporary directory. \
- This might be too small for large directories. For detailed information \
- about the `-s` argument, see `man mmapplypolicy`.",
-        )
-        .value_name("DIR")
-        .value_parser(is_dir)
-        .help_heading("Forwarded to `mmapplypolicy`");
-
-    vec![nodes, local_work_dir, global_work_dir]
 }
 
 // ----------------------------------------------------------------------------

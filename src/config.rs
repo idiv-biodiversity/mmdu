@@ -23,20 +23,18 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-use std::path::PathBuf;
-
 use anyhow::{Context, Result, anyhow};
 use clap::ArgMatches;
 use libc::{gid_t, uid_t};
+
+use mmpolicy::prelude::RunOptions;
 
 #[derive(Debug)]
 pub struct Config {
     pub filter: Filter,
     pub count_links: bool,
     pub max_depth: Option<usize>,
-    pub mm_nodes: Option<String>,
-    pub mm_local_work_dir: Option<PathBuf>,
-    pub mm_global_work_dir: Option<PathBuf>,
+    pub mm_runoptions: RunOptions,
     pub byte_mode: ByteMode,
     pub count_mode: CountMode,
 }
@@ -54,13 +52,10 @@ impl TryFrom<&ArgMatches> for Config {
             .copied()
             .filter(|depth| *depth > 0);
 
-        let mm_nodes = args.get_one::<String>("nodes").cloned();
-
-        let mm_local_work_dir =
-            args.get_one::<PathBuf>("local-work-dir").cloned();
-
-        let mm_global_work_dir =
-            args.get_one::<PathBuf>("global-work-dir").cloned();
+        let mut mm_runoptions = RunOptions::from(args);
+        mm_runoptions.action = Some("defer".into());
+        mm_runoptions.choice_algorithm = Some("fast".into());
+        mm_runoptions.information_level = Some("0".into());
 
         let byte_mode = if args.get_flag("kb-allocated") {
             ByteMode::KBAllocated
@@ -74,9 +69,7 @@ impl TryFrom<&ArgMatches> for Config {
             filter,
             count_links,
             max_depth,
-            mm_nodes,
-            mm_local_work_dir,
-            mm_global_work_dir,
+            mm_runoptions,
             byte_mode,
             count_mode,
         })
@@ -149,15 +142,6 @@ impl TryFrom<&ArgMatches> for Filter {
 pub enum ByteMode {
     FileSize,
     KBAllocated,
-}
-
-impl ByteMode {
-    pub const fn policy_attribute(self) -> &'static str {
-        match self {
-            Self::FileSize => "FILE_SIZE",
-            Self::KBAllocated => "KB_ALLOCATED",
-        }
-    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

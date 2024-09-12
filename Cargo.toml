@@ -23,6 +23,7 @@ bytesize = "2"
 env_logger = { version = "0.11", optional = true }
 libc = "0.2"
 log = { version = "0.4", optional = true }
+mmpolicy = { path = "../mmpolicy", features = ["clap", "log"] }
 pwd-grp = "1"
 tempfile = "3"
 
@@ -34,6 +35,7 @@ features = ["cargo", "deprecated", "wrap_help"]
 clap = { version = "4", features = ["cargo"] }
 clap_complete = "4"
 clap_mangen = "0.2"
+mmpolicy = { path = "../mmpolicy", features = ["clap"] }
 
 [dev-dependencies]
 indoc = "2"

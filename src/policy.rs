@@ -23,75 +23,10 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-use std::fs::File;
-use std::io::{self, Write};
 use std::path::Path;
 
 use anyhow::{Context, Result, anyhow};
 use bstr::ByteSlice;
-use libc::{gid_t, uid_t};
-
-use crate::config::{Config, Filter};
-
-pub fn size(file: &Path, config: &Config) -> io::Result<()> {
-    let mut file = File::create(file)?;
-
-    let attribute = config.byte_mode.policy_attribute();
-
-    let content = match &config.filter {
-        Filter::Group(group) => policy_group(*group, attribute),
-        Filter::User(user) => policy_user(*user, attribute),
-        Filter::None => policy_default(attribute),
-    };
-
-    file.write_all(content.as_bytes())?;
-
-    Ok(())
-}
-
-fn policy_group(group: gid_t, attribute: &str) -> String {
-    format!(
-        "RULE
-  EXTERNAL LIST 'size'
-  EXEC ''
-
-RULE 'TOTAL'
-  LIST 'size'
-  DIRECTORIES_PLUS
-  SHOW(VARCHAR({attribute}) || ' ' || VARCHAR(NLINK))
-  WHERE GROUP_ID = {group}
-"
-    )
-}
-
-fn policy_user(user: uid_t, attribute: &str) -> String {
-    format!(
-        "RULE
-  EXTERNAL LIST 'size'
-  EXEC ''
-
-RULE 'TOTAL'
-  LIST 'size'
-  DIRECTORIES_PLUS
-  SHOW(VARCHAR({attribute}) || ' ' || VARCHAR(NLINK))
-  WHERE USER_ID = {user}
-"
-    )
-}
-
-fn policy_default(attribute: &str) -> String {
-    format!(
-        "RULE
-  EXTERNAL LIST 'size'
-  EXEC ''
-
-RULE 'TOTAL'
-  LIST 'size'
-  DIRECTORIES_PLUS
-  SHOW(VARCHAR({attribute}) || ' ' || VARCHAR(NLINK))
-"
-    )
-}
 
 // inode generation snapid  X Y Z -- path
 pub struct Entry<'a>(Vec<&'a [u8]>, &'a [u8]);
