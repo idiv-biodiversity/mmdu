@@ -85,7 +85,7 @@ pub fn build() -> Command {
 
     let version = Arg::new("version")
         .long("version")
-        .help("print version")
+        .hide_short_help(true)
         .long_help("Print version.")
         .action(ArgAction::Version);
 
