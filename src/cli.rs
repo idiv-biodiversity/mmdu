@@ -76,6 +76,12 @@ pub fn build() -> Command {
             "Use KB_ALLOCATED instead of FILE_SIZE as the policy attribute.",
         );
 
+    let ncdu = Arg::new("ncdu")
+        .long("ncdu")
+        .action(ArgAction::SetTrue)
+        .hide_short_help(true)
+        .long_help("ncdu output mode");
+
     let help = Arg::new("help")
         .short('?')
         .long("help")
@@ -102,6 +108,7 @@ pub fn build() -> Command {
         .arg(max_depth)
         .arg(count_links)
         .arg(kb_allocated)
+        .arg(ncdu)
         .arg(help)
         .arg(version)
         .after_help(
