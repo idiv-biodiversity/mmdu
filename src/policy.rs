@@ -76,3 +76,89 @@ impl<'a> TryFrom<&'a Vec<u8>> for Entry<'a> {
         }
     }
 }
+
+// inode generation snapid  X Y Z -- path
+pub struct NcduEntry<'a>(Vec<&'a [u8]>, &'a [u8]);
+
+impl NcduEntry<'_> {
+    pub fn inode_str(&self) -> Result<&str> {
+        self.0[0].to_str().context("reading inode field")
+    }
+
+    pub fn inode(&self) -> Result<u64> {
+        self.inode_str().and_then(|s| {
+            s.parse()
+                .with_context(|| format!("parsing inode field: \"{s}\""))
+        })
+    }
+
+    pub fn mode_str(&self) -> Result<&str> {
+        self.0[3].to_str().context("reading MODE field")
+    }
+
+    pub fn nlink_str(&self) -> Result<&str> {
+        self.0[4].to_str().context("reading NLINK field")
+    }
+
+    pub fn nlink(&self) -> Result<u32> {
+        self.nlink_str().and_then(|s| {
+            s.parse()
+                .with_context(|| format!("parsing NLINK field: \"{s}\""))
+        })
+    }
+
+    pub fn file_size_str(&self) -> Result<&str> {
+        self.0[5].to_str().context("reading FILE_SIZE field")
+    }
+
+    pub fn file_size(&self) -> Result<u64> {
+        self.file_size_str()
+            .and_then(|s| s.parse().context("parsing FILE_SIZE field"))
+    }
+
+    pub fn kb_allocated_str(&self) -> Result<&str> {
+        self.0[6].to_str().context("reading KB_ALLOCATED field")
+    }
+
+    pub fn kb_allocated(&self) -> Result<u64> {
+        self.kb_allocated_str()
+            .and_then(|s| s.parse().context("parsing KB_ALLOCATED field"))
+    }
+
+    pub fn path(&self) -> Result<&Path> {
+        self.1.to_path().context("parsing path field")
+    }
+}
+
+impl<'a> TryFrom<&'a Vec<u8>> for NcduEntry<'a> {
+    type Error = anyhow::Error;
+
+    fn try_from(line: &'a Vec<u8>) -> Result<Self> {
+        let groups = line.split_str(" -- ").collect::<Vec<_>>();
+
+        if groups.len() != 2 {
+            return Err(anyhow!(
+                "no \" -- \" separator (splits in {}): {}",
+                groups.len(),
+                line.to_str_lossy()
+            ));
+        }
+
+        let fields = groups[0]
+            .splitn_str(8, " ")
+            .filter(|s| !s.is_empty())
+            .collect::<Vec<_>>();
+
+        let path = groups[1];
+
+        if fields.len() == 7 {
+            Ok(Self(fields, path))
+        } else {
+            Err(anyhow!(
+                "incorrect number of fields ({}): {}",
+                fields.len(),
+                line.to_str_lossy()
+            ))
+        }
+    }
+}

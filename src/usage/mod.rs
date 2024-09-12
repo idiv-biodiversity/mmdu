@@ -24,6 +24,7 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 mod depth;
+mod ncdu;
 mod total;
 
 use std::fs::File;
@@ -46,23 +47,32 @@ pub fn run(dir: &Path, config: &Config) -> Result<()> {
         Exec(String::new()),
     )));
 
-    let byte_mode = match config.byte_mode {
-        ByteMode::FileSize => Show::FileSize,
-        ByteMode::KBAllocated => Show::KbAllocated,
-    };
+    if config.ncdu {
+        policy.rules.push(Rule::from(RuleType::List(
+            Name("size".into()),
+            DirectoriesPlus(true),
+            vec![Show::Mode, Show::Nlink, Show::FileSize, Show::KbAllocated],
+            None,
+        )));
+    } else {
+        let byte_mode = match config.byte_mode {
+            ByteMode::FileSize => Show::FileSize,
+            ByteMode::KBAllocated => Show::KbAllocated,
+        };
 
-    let filter = match &config.filter {
-        Filter::Group(group) => Some(Where::Group(*group)),
-        Filter::User(user) => Some(Where::User(*user)),
-        Filter::None => None,
-    };
+        let filter = match &config.filter {
+            Filter::Group(group) => Some(Where::Group(*group)),
+            Filter::User(user) => Some(Where::User(*user)),
+            Filter::None => None,
+        };
 
-    policy.rules.push(Rule::from(RuleType::List(
-        Name("size".into()),
-        DirectoriesPlus(true),
-        vec![byte_mode, Show::Nlink],
-        filter,
-    )));
+        policy.rules.push(Rule::from(RuleType::List(
+            Name("size".into()),
+            DirectoriesPlus(true),
+            vec![byte_mode, Show::Nlink],
+            filter,
+        )));
+    }
 
     let tmp =
         if let Some(local_work_dir) = &config.mm_runoptions.local_work_dir {
@@ -100,7 +110,14 @@ fn sum(dir: &Path, report: &Path, config: &Config) -> Result<()> {
         )
     })?;
 
-    if let Some(depth) = config.max_depth {
+    if config.ncdu {
+        let values = ncdu::sum(dir, report)?;
+        let output = dir.join("disk-usage.ncdu");
+        let mut output = File::create(&output).with_context(|| {
+            format!("creating ncdu mode output file {}", output.display())
+        })?;
+        values.write(&mut output)?;
+    } else if let Some(depth) = config.max_depth {
         let sizes = depth::sum(dir, depth, report, config.count_links)?;
 
         for (dir, Acc { inodes, bytes }) in sizes {

@@ -37,6 +37,7 @@ pub struct Config {
     pub mm_runoptions: RunOptions,
     pub byte_mode: ByteMode,
     pub count_mode: CountMode,
+    pub ncdu: bool,
 }
 
 impl TryFrom<&ArgMatches> for Config {
@@ -65,6 +66,8 @@ impl TryFrom<&ArgMatches> for Config {
 
         let count_mode = CountMode::from(args);
 
+        let ncdu = args.get_flag("ncdu");
+
         Ok(Self {
             filter,
             count_links,
@@ -72,6 +75,7 @@ impl TryFrom<&ArgMatches> for Config {
             mm_runoptions,
             byte_mode,
             count_mode,
+            ncdu,
         })
     }
 }
