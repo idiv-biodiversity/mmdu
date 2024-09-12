@@ -389,8 +389,19 @@ dependencies = [
  "indoc",
  "libc",
  "log",
+ "mmpolicy",
  "pwd-grp",
  "tempfile",
+]
+
+[[package]]
+name = "mmpolicy"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "libc",
+ "log",
+ "thiserror",
 ]
 
 [[package]]
