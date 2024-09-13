@@ -35,7 +35,7 @@ use clap::crate_version;
 
 use crate::policy::NcduEntry;
 
-pub fn sum(root: &Path, report: impl Read) -> Result<FSTree> {
+pub fn sum(root: &Path, report: &mut impl Read) -> Result<FSTree> {
     let report = BufReader::new(report);
 
     let mut fs_tree =
@@ -316,7 +316,8 @@ mod test {
             5 0 0  drwxr-xr-x 1 4096 0 -- /data/test/b
         "};
 
-        let result = sum(Path::new("/data/test"), source.as_bytes()).unwrap();
+        let result =
+            sum(Path::new("/data/test"), &mut source.as_bytes()).unwrap();
 
         let mut a = BTreeMap::new();
         a.insert(
