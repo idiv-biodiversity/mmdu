@@ -30,7 +30,6 @@
 
 mod cli;
 mod config;
-mod output;
 mod policy;
 mod usage;
 
