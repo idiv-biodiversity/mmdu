@@ -27,15 +27,15 @@ use std::collections::BTreeMap;
 use std::io::{BufReader, Read, Write};
 use std::path::{Path, PathBuf};
 
-use anyhow::{anyhow, Context, Result};
-use bstr::io::BufReadExt;
+use anyhow::{Context, Result, anyhow};
 #[cfg(feature = "log")]
 use bstr::ByteSlice;
+use bstr::io::BufReadExt;
 use clap::crate_version;
 
 use crate::policy::NcduEntry;
 
-pub fn sum(root: &Path, report: impl Read) -> Result<FSTree> {
+pub fn sum(root: &Path, report: &mut impl Read) -> Result<FSTree> {
     let report = BufReader::new(report);
 
     let mut fs_tree =
@@ -130,7 +130,7 @@ impl FSTree {
         self.1
     }
 
-    fn data_mut(&mut self) -> &mut Data {
+    const fn data_mut(&mut self) -> &mut Data {
         &mut self.1
     }
 
@@ -138,7 +138,7 @@ impl FSTree {
         &self.2
     }
 
-    fn tree_mut(&mut self) -> &mut BTreeMap<PathBuf, FSObj> {
+    const fn tree_mut(&mut self) -> &mut BTreeMap<PathBuf, FSObj> {
         &mut self.2
     }
 
@@ -316,7 +316,8 @@ mod test {
             5 0 0  drwxr-xr-x 1 4096 0 -- /data/test/b
         "};
 
-        let result = sum(Path::new("/data/test"), source.as_bytes()).unwrap();
+        let result =
+            sum(Path::new("/data/test"), &mut source.as_bytes()).unwrap();
 
         let mut a = BTreeMap::new();
         a.insert(

@@ -32,7 +32,7 @@ use bstr::io::BufReadExt;
 use crate::policy::Entry;
 use crate::usage::Acc;
 
-pub fn sum(report: impl Read, count_links: bool) -> Result<Acc> {
+pub fn sum(report: &mut impl Read, count_links: bool) -> Result<Acc> {
     let mut sum = Acc::default();
     let mut hard_links: HashMap<String, u64> = HashMap::new();
 
@@ -90,13 +90,13 @@ mod test {
 
     #[test]
     fn parse_hardlinks_once() {
-        let sum = sum(SOURCE.as_bytes(), false).unwrap();
+        let sum = sum(&mut SOURCE.as_bytes(), false).unwrap();
         assert_eq!(Acc::from((3, 6144)), sum);
     }
 
     #[test]
     fn parse_hardlinks_many() {
-        let sum = sum(SOURCE.as_bytes(), true).unwrap();
+        let sum = sum(&mut SOURCE.as_bytes(), true).unwrap();
         assert_eq!(Acc::from((5, 8192)), sum);
     }
 }

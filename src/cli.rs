@@ -33,6 +33,8 @@ pub const CONFLICT_FILTER: &str = "the filter options --group and --user are \
                                    in conflict, clap SHOULD NOT allow both to \
                                    be present";
 
+const HELP_HEADING_OUTPUT_REPORT: &str = "Output Reports";
+
 /// Returns command-line parser.
 pub fn build() -> Command {
     let dir = Arg::new("dir")
@@ -76,12 +78,6 @@ pub fn build() -> Command {
             "Use KB_ALLOCATED instead of FILE_SIZE as the policy attribute.",
         );
 
-    let ncdu = Arg::new("ncdu")
-        .long("ncdu")
-        .action(ArgAction::SetTrue)
-        .hide_short_help(true)
-        .long_help("ncdu output mode");
-
     let help = Arg::new("help")
         .short('?')
         .long("help")
@@ -102,13 +98,13 @@ pub fn build() -> Command {
         .disable_help_flag(true)
         .disable_version_flag(true)
         .arg(dir)
+        .args(reports())
         .args(output_fields())
         .args(filter())
         .args(mmpolicy::clap::args_parallel())
         .arg(max_depth)
         .arg(count_links)
         .arg(kb_allocated)
-        .arg(ncdu)
         .arg(help)
         .arg(version)
         .after_help(
@@ -120,6 +116,26 @@ pub fn build() -> Command {
 // ----------------------------------------------------------------------------
 // argument groups
 // ----------------------------------------------------------------------------
+
+fn reports() -> Vec<Arg> {
+    let du = Arg::new("report-du")
+        .long("report-du")
+        .action(ArgAction::Set)
+        .value_name("PATH|PATTERN")
+        .help("write du-like report to file")
+        .long_help("Write du-like report to file.")
+        .help_heading(HELP_HEADING_OUTPUT_REPORT);
+
+    let ncdu = Arg::new("report-ncdu")
+        .long("report-ncdu")
+        .action(ArgAction::Set)
+        .value_name("PATH|PATTERN")
+        .help("write ncdu export file")
+        .long_help("Write ncdu export file for consumption with `ncdu -f`.")
+        .help_heading(HELP_HEADING_OUTPUT_REPORT);
+
+    vec![du, ncdu]
+}
 
 fn output_fields() -> Vec<Arg> {
     let block = Arg::new("block")

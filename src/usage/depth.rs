@@ -50,7 +50,7 @@ impl DepthAcc {
 pub fn sum(
     dir: &Path,
     depth: usize,
-    report: impl Read,
+    report: &mut impl Read,
     count_links: bool,
 ) -> Result<BTreeMap<PathBuf, Acc>> {
     let report = BufReader::new(report);
@@ -143,7 +143,8 @@ mod test {
         expected.insert("/data/test/b".into(), Acc::from((3, 6144)));
 
         let sum =
-            sum(Path::new("/data/test"), 1, SOURCE.as_bytes(), false).unwrap();
+            sum(Path::new("/data/test"), 1, &mut SOURCE.as_bytes(), false)
+                .unwrap();
 
         assert_eq!(expected, sum);
     }
@@ -156,7 +157,8 @@ mod test {
         expected.insert("/data/test/b".into(), Acc::from((3, 6144)));
 
         let sum =
-            sum(Path::new("/data/test"), 1, SOURCE.as_bytes(), true).unwrap();
+            sum(Path::new("/data/test"), 1, &mut SOURCE.as_bytes(), true)
+                .unwrap();
 
         assert_eq!(expected, sum);
     }

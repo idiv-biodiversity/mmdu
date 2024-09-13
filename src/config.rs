@@ -23,6 +23,8 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
+use std::path::{Path, PathBuf};
+
 use anyhow::{Context, Result, anyhow};
 use clap::ArgMatches;
 use libc::{gid_t, uid_t};
@@ -37,7 +39,7 @@ pub struct Config {
     pub mm_runoptions: RunOptions,
     pub byte_mode: ByteMode,
     pub count_mode: CountMode,
-    pub ncdu: bool,
+    pub reports: Vec<Report>,
 }
 
 impl TryFrom<&ArgMatches> for Config {
@@ -66,7 +68,21 @@ impl TryFrom<&ArgMatches> for Config {
 
         let count_mode = CountMode::from(args);
 
-        let ncdu = args.get_flag("ncdu");
+        let mut reports = vec![];
+
+        if let Some(path) = args.get_one::<String>("report-du") {
+            reports.push(Report {
+                path_or_pattern: path.to_owned(),
+                tpe: ReportType::Du,
+            });
+        }
+
+        if let Some(path) = args.get_one::<String>("report-ncdu") {
+            reports.push(Report {
+                path_or_pattern: path.to_owned(),
+                tpe: ReportType::Ncdu,
+            });
+        }
 
         Ok(Self {
             filter,
@@ -75,8 +91,16 @@ impl TryFrom<&ArgMatches> for Config {
             mm_runoptions,
             byte_mode,
             count_mode,
-            ncdu,
+            reports,
         })
+    }
+}
+
+impl Config {
+    pub fn ncdu(&self) -> bool {
+        self.reports
+            .iter()
+            .any(|o| matches!(o.tpe, ReportType::Ncdu))
     }
 }
 
@@ -168,6 +192,30 @@ impl From<&ArgMatches> for CountMode {
             _ => Self::Bytes,
         }
     }
+}
+
+#[derive(Debug)]
+pub struct Report {
+    pub path_or_pattern: String,
+    pub tpe: ReportType,
+}
+
+impl Report {
+    pub fn path(&self, base: &Path) -> PathBuf {
+        let p = &self.path_or_pattern;
+
+        if p.starts_with("{}/") {
+            base.join(p.replace("{}/", ""))
+        } else {
+            PathBuf::from(p)
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub enum ReportType {
+    Du,
+    Ncdu,
 }
 
 // ----------------------------------------------------------------------------
