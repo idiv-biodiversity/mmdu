@@ -118,33 +118,17 @@ pub fn sum(
 
 #[cfg(test)]
 mod test {
-    use indoc::indoc;
-
     use super::*;
-
-    const SOURCE: &str = indoc! {"
-        1 1 0  4096 1 -- /data/test
-        1 1 0  1024 5 -- /data/test/foo
-        1 1 0  1024 5 -- /data/test/bar
-        2 1 0  1024 2 -- /data/test/other
-        1 1 0  4096 1 -- /data/test/a
-        1 1 0  1024 5 -- /data/test/a/foo
-        1 1 0  1024 5 -- /data/test/a/bar
-        1 1 0  4096 1 -- /data/test/b
-        1 1 0  1024 5 -- /data/test/b/foo
-        2 1 0  1024 2 -- /data/test/b/other
-    "};
 
     #[test]
     fn parse_hardlinks_once() {
         let mut expected = BTreeMap::new();
         expected.insert("/data/test".into(), Acc::from((5, 14336)));
-        expected.insert("/data/test/a".into(), Acc::from((2, 5120)));
-        expected.insert("/data/test/b".into(), Acc::from((3, 6144)));
+        expected.insert("/data/test/a".into(), Acc::from((3, 6144)));
+        expected.insert("/data/test/b".into(), Acc::from((2, 5120)));
 
-        let sum =
-            sum(Path::new("/data/test"), 1, &mut SOURCE.as_bytes(), false)
-                .unwrap();
+        let source = &mut Entry::EXAMPLE.as_bytes();
+        let sum = sum(Path::new("/data/test"), 1, source, false).unwrap();
 
         assert_eq!(expected, sum);
     }
@@ -152,13 +136,12 @@ mod test {
     #[test]
     fn parse_hardlinks_many() {
         let mut expected = BTreeMap::new();
-        expected.insert("/data/test".into(), Acc::from((10, 19456)));
+        expected.insert("/data/test".into(), Acc::from((8, 17408)));
         expected.insert("/data/test/a".into(), Acc::from((3, 6144)));
-        expected.insert("/data/test/b".into(), Acc::from((3, 6144)));
+        expected.insert("/data/test/b".into(), Acc::from((2, 5120)));
 
-        let sum =
-            sum(Path::new("/data/test"), 1, &mut SOURCE.as_bytes(), true)
-                .unwrap();
+        let source = &mut Entry::EXAMPLE.as_bytes();
+        let sum = sum(Path::new("/data/test"), 1, source, true).unwrap();
 
         assert_eq!(expected, sum);
     }

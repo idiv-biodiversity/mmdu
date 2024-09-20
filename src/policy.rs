@@ -54,6 +54,18 @@ impl Entry<'_> {
     pub fn path(&self) -> Result<&Path> {
         self.1.to_path().context("parsing path field")
     }
+
+    #[cfg(test)]
+    pub const EXAMPLE: &'static str = indoc::indoc! {"
+        1 0 0  4096 1 -- /data/test
+        2 0 0  4096 1 -- /data/test/a
+        3 0 0  1024 1 -- /data/test/a/baz
+        4 0 0  1024 4 -- /data/test/bar
+        4 0 0  1024 4 -- /data/test/foo
+        4 0 0  1024 4 -- /data/test/a/foo
+        4 0 0  1024 4 -- /data/test/b/bar
+        5 0 0  4096 1 -- /data/test/b
+    "};
 }
 
 impl<'a> TryFrom<&'a Vec<u8>> for Entry<'a> {
@@ -128,6 +140,18 @@ impl NcduEntry<'_> {
     pub fn path(&self) -> Result<&Path> {
         self.1.to_path().context("parsing path field")
     }
+
+    #[cfg(test)]
+    pub const EXAMPLE: &'static str = indoc::indoc! {"
+        1 0 0  drwx------ 1 4096 0 -- /data/test
+        2 0 0  drwxr-xr-x 1 4096 0 -- /data/test/a
+        3 0 0  -rw-r--r-- 1 1024 0 -- /data/test/a/baz
+        4 0 0  -rw-r--r-- 4 1024 0 -- /data/test/bar
+        4 0 0  -rw-r--r-- 4 1024 0 -- /data/test/foo
+        4 0 0  -rw-r--r-- 4 1024 0 -- /data/test/a/foo
+        4 0 0  -rw-r--r-- 4 1024 0 -- /data/test/b/bar
+        5 0 0  drwxr-xr-x 1 4096 0 -- /data/test/b
+    "};
 }
 
 impl<'a> TryFrom<&'a Vec<u8>> for NcduEntry<'a> {
