@@ -163,22 +163,27 @@ fn write_report(
     dir: &Path,
     config: &Config,
 ) -> Result<()> {
-    let path = report.path(dir);
-
-    let mut file = File::create(&path)
-        .with_context(|| format!("creating report file {}", path.display()))?;
+    let mut file = report.create_in(dir)?;
 
     match (&data, report.tpe) {
         (Data::Du(data), ReportType::Du) => {
             write_du(data, &mut file, config)?;
         }
 
-        (Data::Ncdu(_), ReportType::Du) => {
-            todo!("generate du report from ncdu data")
+        (Data::Ncdu(ncdu), ReportType::Du) => {
+            if let Some(depth) = config.max_depth {
+                let depth_sums = ncdu.to_depth(depth, config);
+                write_du(&depth_sums, &mut file, config)?;
+            } else {
+                let acc = ncdu.to_total(config);
+                let mut sizes = BTreeMap::new();
+                sizes.insert(dir.to_owned(), acc);
+                write_du(&sizes, &mut file, config)?;
+            }
         }
 
-        (Data::Ncdu(data), ReportType::Ncdu) => {
-            data.write(&mut file)?;
+        (Data::Ncdu(ncdu), ReportType::Ncdu) => {
+            ncdu.write(&mut file)?;
         }
 
         (Data::Du(_), ReportType::Ncdu) => {
