@@ -23,6 +23,7 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
+use std::fs::File;
 use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result, anyhow};
@@ -201,14 +202,18 @@ pub struct Report {
 }
 
 impl Report {
-    pub fn path(&self, base: &Path) -> PathBuf {
-        let p = &self.path_or_pattern;
+    pub fn create_in(&self, base: &Path) -> Result<File> {
+        let path = &self.path_or_pattern;
 
-        if p.starts_with("{}/") {
-            base.join(p.replace("{}/", ""))
+        let path = if path.starts_with("{}/") {
+            base.join(path.replace("{}/", ""))
         } else {
-            PathBuf::from(p)
-        }
+            PathBuf::from(path)
+        };
+
+        File::create(&path).with_context(|| {
+            format!("creating report file {}", path.display())
+        })
     }
 }
 

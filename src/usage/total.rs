@@ -76,27 +76,19 @@ pub fn sum(report: &mut impl Read, count_links: bool) -> Result<Acc> {
 
 #[cfg(test)]
 mod test {
-    use indoc::indoc;
-
     use super::*;
-
-    const SOURCE: &str = indoc! {"
-        1 1 0  4096 1 -- /data/test
-        1 1 0  1024 3 -- /data/test/foo
-        1 1 0  1024 3 -- /data/test/bar
-        1 1 0  1024 3 -- /data/test/baz
-        2 1 0  1024 2 -- /data/test/other
-    "};
 
     #[test]
     fn parse_hardlinks_once() {
-        let sum = sum(&mut SOURCE.as_bytes(), false).unwrap();
-        assert_eq!(Acc::from((3, 6144)), sum);
+        let source = &mut Entry::EXAMPLE.as_bytes();
+        let sum = sum(source, false).unwrap();
+        assert_eq!(Acc::from((5, 14336)), sum);
     }
 
     #[test]
     fn parse_hardlinks_many() {
-        let sum = sum(&mut SOURCE.as_bytes(), true).unwrap();
-        assert_eq!(Acc::from((5, 8192)), sum);
+        let source = &mut Entry::EXAMPLE.as_bytes();
+        let sum = sum(source, true).unwrap();
+        assert_eq!(Acc::from((8, 17408)), sum);
     }
 }

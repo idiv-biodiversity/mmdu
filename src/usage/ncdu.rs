@@ -23,7 +23,7 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 use std::io::{BufReader, Read, Write};
 use std::path::{Path, PathBuf};
 
@@ -33,7 +33,10 @@ use bstr::ByteSlice;
 use bstr::io::BufReadExt;
 use clap::crate_version;
 
+use crate::config::{ByteMode, Config};
 use crate::policy::NcduEntry;
+
+use super::Acc;
 
 pub fn sum(root: &Path, report: &mut impl Read) -> Result<FSTree> {
     let report = BufReader::new(report);
@@ -65,6 +68,37 @@ pub struct Data {
 }
 
 impl Data {
+    fn sum_total(
+        &self,
+        acc: &mut Acc,
+        hard_links: &mut Option<HashMap<u64, u64>>,
+        byte_mode: ByteMode,
+    ) {
+        let value = match byte_mode {
+            ByteMode::FileSize => self.file_size,
+            ByteMode::KBAllocated => self.kb_allocated,
+        };
+
+        // early return if there is only one link
+        if self.nlink == 1 {
+            *acc += value;
+            return;
+        }
+
+        if let Some(hard_links) = hard_links {
+            let inode = hard_links
+                .entry(self.inode)
+                .and_modify(|c| *c += 1)
+                .or_insert(1);
+
+            if *inode == 1 {
+                *acc += value;
+            }
+        } else {
+            *acc += value;
+        }
+    }
+
     fn write(&self, output: &mut impl Write) -> Result<()> {
         if self.file_size != 0 {
             write!(output, r#","asize":{}"#, self.file_size)?;
@@ -283,6 +317,42 @@ impl FSTree {
 
         Ok(())
     }
+
+    pub fn to_total(&self, config: &Config) -> Acc {
+        let mut acc = Acc::default();
+        let mut hard_links = config.count_links.then(HashMap::new);
+        self.sum_total_rec(&mut acc, &mut hard_links, config.byte_mode);
+        acc
+    }
+
+    fn sum_total_rec(
+        &self,
+        acc: &mut Acc,
+        hard_links: &mut Option<HashMap<u64, u64>>,
+        byte_mode: ByteMode,
+    ) {
+        self.data().sum_total(acc, hard_links, byte_mode);
+
+        for fsobj in self.tree().values() {
+            match fsobj {
+                FSObj::Dir(tree) => {
+                    tree.sum_total_rec(acc, hard_links, byte_mode);
+                }
+
+                FSObj::Node(data) => {
+                    data.sum_total(acc, hard_links, byte_mode);
+                }
+            }
+        }
+    }
+
+    pub fn to_depth(
+        &self,
+        _depth: usize,
+        _config: &Config,
+    ) -> BTreeMap<PathBuf, Acc> {
+        todo!()
+    }
 }
 
 // ----------------------------------------------------------------------------
@@ -291,34 +361,18 @@ impl FSTree {
 
 #[cfg(test)]
 mod test {
-    use indoc::{formatdoc, indoc};
+    use indoc::formatdoc;
 
     use super::*;
 
+    // ALLOW const is only possible when feature disabled
     #[allow(clippy::missing_const_for_fn)]
     fn init() {
         #[cfg(feature = "log")]
         let _ = env_logger::builder().is_test(true).try_init();
     }
 
-    #[test]
-    fn parse() {
-        init();
-
-        let source = indoc! {"
-            1 0 0  drwx------ 1 4096 0 -- /data/test
-            2 0 0  drwxr-xr-x 1 4096 0 -- /data/test/a
-            3 0 0  -rw-r--r-- 1 1024 0 -- /data/test/a/baz
-            4 0 0  -rw-r--r-- 4 1024 0 -- /data/test/bar
-            4 0 0  -rw-r--r-- 4 1024 0 -- /data/test/foo
-            4 0 0  -rw-r--r-- 4 1024 0 -- /data/test/a/foo
-            4 0 0  -rw-r--r-- 4 1024 0 -- /data/test/b/bar
-            5 0 0  drwxr-xr-x 1 4096 0 -- /data/test/b
-        "};
-
-        let result =
-            sum(Path::new("/data/test"), &mut source.as_bytes()).unwrap();
-
+    fn example_tree() -> FSTree {
         let mut a = BTreeMap::new();
         a.insert(
             "/data/test/a/baz".into(),
@@ -391,7 +445,8 @@ mod test {
         );
         root.insert("/data/test/a".into(), FSObj::Dir(a));
         root.insert("/data/test/b".into(), FSObj::Dir(b));
-        let expected = FSTree(
+
+        FSTree(
             "/data/test".into(),
             Data {
                 file_size: 4096,
@@ -400,7 +455,17 @@ mod test {
                 inode: 0,
             },
             root,
-        );
+        )
+    }
+
+    #[test]
+    fn parse() {
+        init();
+
+        let source = &mut NcduEntry::EXAMPLE.as_bytes();
+        let result = sum(Path::new("/data/test"), source).unwrap();
+
+        let expected = example_tree();
 
         assert_eq!(expected, result);
     }
@@ -489,88 +554,7 @@ mod test {
     fn write_nested() {
         init();
 
-        let mut a = BTreeMap::new();
-        a.insert(
-            "/data/test/a/baz".into(),
-            FSObj::Node(Data {
-                file_size: 1024,
-                kb_allocated: 0,
-                nlink: 1,
-                inode: 4,
-            }),
-        );
-        a.insert(
-            "/data/test/a/foo".into(),
-            FSObj::Node(Data {
-                file_size: 1024,
-                kb_allocated: 0,
-                nlink: 4,
-                inode: 1,
-            }),
-        );
-        let a = FSTree(
-            "/data/test/a".into(),
-            Data {
-                file_size: 4096,
-                kb_allocated: 0,
-                nlink: 1,
-                inode: 3,
-            },
-            a,
-        );
-
-        let mut b = BTreeMap::new();
-        b.insert(
-            "/data/test/b/bar".into(),
-            FSObj::Node(Data {
-                file_size: 1024,
-                kb_allocated: 0,
-                nlink: 4,
-                inode: 1,
-            }),
-        );
-        let b = FSTree(
-            "/data/test/b".into(),
-            Data {
-                file_size: 4096,
-                kb_allocated: 0,
-                nlink: 1,
-                inode: 2,
-            },
-            b,
-        );
-
-        let mut root = BTreeMap::new();
-        root.insert(
-            "/data/test/bar".into(),
-            FSObj::Node(Data {
-                file_size: 1024,
-                kb_allocated: 0,
-                nlink: 4,
-                inode: 1,
-            }),
-        );
-        root.insert(
-            "/data/test/foo".into(),
-            FSObj::Node(Data {
-                file_size: 1024,
-                kb_allocated: 0,
-                nlink: 4,
-                inode: 1,
-            }),
-        );
-        root.insert("/data/test/a".into(), FSObj::Dir(a));
-        root.insert("/data/test/b".into(), FSObj::Dir(b));
-        let tree = FSTree(
-            "/data/test".into(),
-            Data {
-                file_size: 4096,
-                kb_allocated: 0,
-                nlink: 1,
-                inode: 1,
-            },
-            root,
-        );
+        let tree = example_tree();
 
         let mut result: Vec<u8> = Vec::new();
         tree.write(&mut result).unwrap();
@@ -581,15 +565,40 @@ mod test {
             [{{"name":"/data/test","asize":4096}},
             [{{"name":"a","asize":4096}},
             {{"name":"baz","asize":1024}},
-            {{"name":"foo","asize":1024,"nlink":4,"ino":1}}],
+            {{"name":"foo","asize":1024,"nlink":4,"ino":4}}],
             [{{"name":"b","asize":4096}},
-            {{"name":"bar","asize":1024,"nlink":4,"ino":1}}],
-            {{"name":"bar","asize":1024,"nlink":4,"ino":1}},
-            {{"name":"foo","asize":1024,"nlink":4,"ino":1}}]]
+            {{"name":"bar","asize":1024,"nlink":4,"ino":4}}],
+            {{"name":"bar","asize":1024,"nlink":4,"ino":4}},
+            {{"name":"foo","asize":1024,"nlink":4,"ino":4}}]]
             "#,
             progver = crate_version!(),
         };
 
         assert_eq!(expected, result);
+    }
+
+    #[test]
+    fn ncdu_to_total() {
+        init();
+
+        let tree = example_tree();
+
+        let mut hard_links_not_counted = Acc::default();
+        tree.sum_total_rec(
+            &mut hard_links_not_counted,
+            &mut Some(HashMap::new()),
+            ByteMode::FileSize,
+        );
+
+        assert_eq!(Acc::from((5, 14336)), hard_links_not_counted);
+
+        let mut hard_links_counted = Acc::default();
+        tree.sum_total_rec(
+            &mut hard_links_counted,
+            &mut None,
+            ByteMode::FileSize,
+        );
+
+        assert_eq!(Acc::from((8, 17408)), hard_links_counted);
     }
 }
