@@ -32,7 +32,7 @@ use libc::{gid_t, uid_t};
 
 use mmpolicy::prelude::RunOptions;
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct Config {
     pub filter: Filter,
     pub count_links: bool,
@@ -105,10 +105,11 @@ impl Config {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub enum Filter {
     Group(gid_t),
     User(uid_t),
+    #[default]
     None,
 }
 
@@ -167,15 +168,17 @@ impl TryFrom<&ArgMatches> for Filter {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum ByteMode {
+    #[default]
     FileSize,
     KBAllocated,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum CountMode {
     Inodes,
+    #[default]
     Bytes,
     Both,
 }

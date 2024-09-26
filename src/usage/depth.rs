@@ -33,13 +33,13 @@ use bstr::io::BufReadExt;
 use crate::policy::Entry;
 use crate::usage::Acc;
 
-struct DepthAcc {
-    acc: Acc,
-    hard_links: HashMap<String, u64>,
+pub struct DepthAcc {
+    pub acc: Acc,
+    pub hard_links: HashMap<String, u64>,
 }
 
 impl DepthAcc {
-    fn new(bytes: u64) -> Self {
+    pub fn new(bytes: u64) -> Self {
         Self {
             acc: Acc::new(bytes),
             hard_links: HashMap::new(),

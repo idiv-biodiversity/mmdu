@@ -35,6 +35,7 @@ use clap::crate_version;
 
 use crate::config::{ByteMode, Config};
 use crate::policy::NcduEntry;
+use crate::usage::depth::DepthAcc;
 
 use super::Acc;
 
@@ -96,6 +97,27 @@ impl Data {
             }
         } else {
             *acc += value;
+        }
+    }
+
+    fn sum_depth(
+        &self,
+        sums: &mut HashMap<PathBuf, DepthAcc>,
+        path: &Path,
+        prefix_depth: usize,
+        max_depth: usize,
+        config: &Config,
+    ) {
+        let path_depth = path.iter().count();
+        let path_suffix_depth = path_depth - prefix_depth;
+
+        for depth in 0..=max_depth.min(path_suffix_depth) {
+            let prefix: PathBuf =
+                path.iter().take(prefix_depth + depth).collect();
+
+            // sums.entry(prefix).and_modify(|acc| {
+            //     self.sum_total(&mut acc.acc, &mut acc.hard_links, byte_mode)
+            // });
         }
     }
 
@@ -348,10 +370,54 @@ impl FSTree {
 
     pub fn to_depth(
         &self,
-        _depth: usize,
-        _config: &Config,
+        dir: &Path,
+        max_depth: usize,
+        config: &Config,
     ) -> BTreeMap<PathBuf, Acc> {
-        todo!()
+        let mut sums: HashMap<PathBuf, DepthAcc> = HashMap::new();
+        let prefix_depth = dir.iter().count();
+
+        self.sum_depth_rec(&mut sums, prefix_depth, max_depth, config);
+
+        sums.into_iter()
+            .filter_map(|(path, value)| {
+                (value.acc.inodes > 1).then_some((path, value.acc))
+            })
+            .collect()
+    }
+
+    fn sum_depth_rec(
+        &self,
+        sums: &mut HashMap<PathBuf, DepthAcc>,
+        prefix_depth: usize,
+        max_depth: usize,
+        config: &Config,
+    ) {
+        self.data().sum_depth(
+            sums,
+            self.path(),
+            prefix_depth,
+            max_depth,
+            config,
+        );
+
+        for fsobj in self.tree().values() {
+            match fsobj {
+                FSObj::Dir(tree) => {
+                    tree.sum_depth_rec(sums, prefix_depth, max_depth, config);
+                }
+
+                FSObj::Node(data) => {
+                    data.sum_depth(
+                        sums,
+                        self.path(),
+                        prefix_depth,
+                        max_depth,
+                        config,
+                    );
+                }
+            }
+        }
     }
 }
 
@@ -600,5 +666,36 @@ mod test {
         );
 
         assert_eq!(Acc::from((8, 17408)), hard_links_counted);
+    }
+
+    #[test]
+    fn ncdu_to_depth() {
+        init();
+
+        let config = Config {
+            byte_mode: ByteMode::FileSize,
+            count_links: false,
+            ..Default::default()
+        };
+
+        let tree = example_tree();
+
+        let mut expected_zero = BTreeMap::new();
+        expected_zero.insert("/data/test".into(), Acc::from((5, 14336)));
+
+        assert_eq!(
+            expected_zero,
+            tree.to_depth(Path::new("/data/test"), 0, &config)
+        );
+
+        let mut expected_one = BTreeMap::new();
+        expected_one.insert("/data/test".into(), Acc::from((5, 14336)));
+        expected_one.insert("/data/test/a".into(), Acc::from((3, 6144)));
+        expected_one.insert("/data/test/b".into(), Acc::from((2, 5120)));
+
+        assert_eq!(
+            expected_one,
+            tree.to_depth(Path::new("/data/test"), 1, &config)
+        );
     }
 }
