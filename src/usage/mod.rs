@@ -172,7 +172,7 @@ fn write_report(
 
         (Data::Ncdu(ncdu), ReportType::Du) => {
             if let Some(depth) = config.max_depth {
-                let depth_sums = ncdu.to_depth(depth, config);
+                let depth_sums = ncdu.to_depth(dir, depth, config);
                 write_du(&depth_sums, &mut file, config)?;
             } else {
                 let acc = ncdu.to_total(config);
