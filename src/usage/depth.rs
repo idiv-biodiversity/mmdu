@@ -57,7 +57,7 @@ pub fn sum(
 
     let mut sums: HashMap<PathBuf, DepthAcc> = HashMap::new();
 
-    let prefix_depth = Path::new(dir).iter().count();
+    let prefix_depth = dir.iter().count();
 
     for line in report.byte_lines() {
         let line = line.context("reading line from policy report")?;
