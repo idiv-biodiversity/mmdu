@@ -66,15 +66,15 @@ pub fn run(dir: &Path, config: &Config) -> Result<()> {
 
     if let Some(ref nodes) = config.mm_nodes {
         command.args(["-N", nodes]);
-    };
+    }
 
     if let Some(ref local_work_dir) = config.mm_local_work_dir {
         command.arg("-s").arg(local_work_dir);
-    };
+    }
 
     if let Some(ref global_work_dir) = config.mm_global_work_dir {
         command.arg("-g").arg(global_work_dir);
-    };
+    }
 
     #[cfg(feature = "log")]
     log::debug!("command: {command:?}");
@@ -123,7 +123,7 @@ fn sum(dir: &Path, report: &Path, config: &Config) -> Result<()> {
     } else {
         let Acc { inodes, bytes } = sum_total(report, config.count_links)?;
         output(dir, inodes, bytes, config);
-    };
+    }
 
     Ok(())
 }
