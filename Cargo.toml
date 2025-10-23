@@ -10,8 +10,8 @@ homepage = "https://github.com/idiv-biodiversity/mmdu"
 repository = "https://github.com/idiv-biodiversity/mmdu"
 keywords = ["disk", "usage", "gpfs", "spectrum-scale", "storage-scale"]
 categories = ["command-line-utilities", "filesystem"]
-edition = "2021"
-rust-version = "1.74"
+edition = "2024"
+rust-version = "1.85"
 
 [features]
 log = ["dep:log", "dep:env_logger"]

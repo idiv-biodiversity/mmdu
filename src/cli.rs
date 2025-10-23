@@ -26,12 +26,12 @@
 use std::path::PathBuf;
 
 use clap::value_parser;
-use clap::{crate_description, crate_name, crate_version};
 use clap::{Arg, ArgAction, Command};
+use clap::{crate_description, crate_name, crate_version};
 
-pub const CONFLICT_FILTER: &str =
-    "the filter options --group and --user are in conflict, clap SHOULD NOT \
-     allow both to be present";
+pub const CONFLICT_FILTER: &str = "the filter options --group and --user are \
+                                   in conflict, clap SHOULD NOT allow both to \
+                                   be present";
 
 /// Returns command-line parser.
 pub fn build() -> Command {

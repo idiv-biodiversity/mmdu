@@ -25,7 +25,7 @@
 
 use std::path::PathBuf;
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result, anyhow};
 use clap::ArgMatches;
 use libc::{gid_t, uid_t};
 

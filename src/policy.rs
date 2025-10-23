@@ -27,7 +27,7 @@ use std::fs::File;
 use std::io::{self, Write};
 use std::path::Path;
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result, anyhow};
 use bstr::ByteSlice;
 use libc::{gid_t, uid_t};
 
