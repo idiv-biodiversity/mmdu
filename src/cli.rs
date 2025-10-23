@@ -210,13 +210,13 @@ fn is_dir(s: &str) -> Result<PathBuf, String> {
     let path = PathBuf::from(s);
 
     if !path.exists() {
-        Err(format!("does not exist: {path:?}"))
+        Err(format!("does not exist: {}", path.display()))
     } else if !path.is_absolute() {
-        Err(format!("is not absolute: {path:?}"))
+        Err(format!("is not absolute: {}", path.display()))
     } else if path.is_dir() {
         Ok(path)
     } else {
-        Err(format!("is not a directory: {path:?}"))
+        Err(format!("is not a directory: {}", path.display()))
     }
 }
 
