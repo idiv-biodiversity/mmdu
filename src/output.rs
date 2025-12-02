@@ -25,7 +25,7 @@
 
 use std::path::Path;
 
-use bytesize::ByteSize;
+use bytesize::{ByteSize, Display};
 
 use crate::config::{ByteMode, Config, CountMode};
 
@@ -44,10 +44,6 @@ pub fn output(dir: &Path, inodes: u64, bytes: u64, config: &Config) {
     }
 }
 
-fn humanize(bytes: ByteSize) -> String {
-    bytes
-        .to_string_as(true)
-        .replace("iB", "")
-        .replace(' ', "")
-        .to_uppercase()
+fn humanize(bytes: ByteSize) -> Display {
+    bytes.display().iec().iec_short()
 }
