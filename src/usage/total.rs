@@ -88,6 +88,12 @@ mod test {
         2 1 0  1024 2 -- /data/test/other
     "};
 
+    const INVALID: &str = indoc! {"
+        1 1 0  4096 1 -- /data/test
+        1 1 0  1024 2 -- /data/test/foo
+        1 1 0  3 -- /data/test/bar
+    "};
+
     #[test]
     fn parse_hardlinks_once() {
         let sum = sum(SOURCE.as_bytes(), false).unwrap();
@@ -98,5 +104,14 @@ mod test {
     fn parse_hardlinks_many() {
         let sum = sum(SOURCE.as_bytes(), true).unwrap();
         assert_eq!(Acc::from((5, 8192)), sum);
+    }
+
+    #[test]
+    fn parse_invalid() {
+        let result = sum(INVALID.as_bytes(), false);
+        assert!(result.is_err());
+
+        let error = format!("{:#?}", result.unwrap_err());
+        assert!(error.contains("/data/test/bar"));
     }
 }

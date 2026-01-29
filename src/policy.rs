@@ -128,7 +128,11 @@ impl<'a> TryFrom<&'a Vec<u8>> for Entry<'a> {
         let groups = line.split_str(" -- ").collect::<Vec<_>>();
 
         if groups.len() != 2 {
-            return Err(anyhow!(Entry::INVALID));
+            return Err(anyhow!(
+                "{}: {}",
+                Entry::INVALID,
+                line.to_str_lossy()
+            ));
         }
 
         let fields = groups[0].splitn_str(7, " ").take(6).collect::<Vec<_>>();
@@ -137,7 +141,7 @@ impl<'a> TryFrom<&'a Vec<u8>> for Entry<'a> {
         if fields.len() == 6 {
             Ok(Self(fields, path))
         } else {
-            Err(anyhow!(Entry::INVALID))
+            Err(anyhow!("{}: {}", Entry::INVALID, line.to_str_lossy()))
         }
     }
 }
