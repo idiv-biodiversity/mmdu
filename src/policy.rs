@@ -125,23 +125,48 @@ impl<'a> TryFrom<&'a [u8]> for Entry<'a> {
     type Error = anyhow::Error;
 
     fn try_from(line: &'a [u8]) -> Result<Self> {
-        let groups = line.split_str(" -- ").collect::<Vec<_>>();
-
-        if groups.len() != 2 {
+        let Some((fields, path)) = line.split_once_str(" -- ") else {
             return Err(anyhow!(
                 "{}: {}",
                 Entry::INVALID,
                 line.to_str_lossy()
             ));
-        }
+        };
 
-        let fields = groups[0].splitn_str(7, " ").take(6).collect::<Vec<_>>();
-        let path = groups[1];
+        let fields = fields.splitn_str(7, " ").take(6).collect::<Vec<_>>();
 
         if fields.len() == 6 {
             Ok(Self(fields, path))
         } else {
             Err(anyhow!("{}: {}", Entry::INVALID, line.to_str_lossy()))
         }
+    }
+}
+
+// ----------------------------------------------------------------------------
+// tests
+// ----------------------------------------------------------------------------
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    const ENTRY_SIMPLE: &str = "1 1 0  4096 1 -- /path/to/file";
+    const ENTRY_WITH_DASHES: &str = "1 1 0  4096 1 -- /path/with -- dashes";
+
+    #[test]
+    fn parse_entry() {
+        let entry = Entry::try_from(ENTRY_SIMPLE.as_bytes()).unwrap();
+
+        assert_eq!(entry.inode_str().unwrap(), "1");
+        assert_eq!(entry.bytes_str().unwrap(), "4096");
+        assert_eq!(entry.nlink_str().unwrap(), "1");
+        assert_eq!(entry.path().unwrap(), Path::new("/path/to/file"));
+    }
+
+    #[test]
+    fn parse_entry_with_dashes() {
+        let entry = Entry::try_from(ENTRY_WITH_DASHES.as_bytes()).unwrap();
+        assert_eq!(entry.path().unwrap(), Path::new("/path/with -- dashes"));
     }
 }
