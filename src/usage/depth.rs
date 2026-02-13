@@ -61,6 +61,7 @@ pub fn sum(
 
     for line in report.byte_lines() {
         let line = line.context("reading line from policy report")?;
+
         let entry = Entry::try_from(line.as_slice())
             .context("parsing line from policy report")?;
 
