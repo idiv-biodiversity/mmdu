@@ -121,10 +121,10 @@ impl Entry<'_> {
     }
 }
 
-impl<'a> TryFrom<&'a Vec<u8>> for Entry<'a> {
+impl<'a> TryFrom<&'a [u8]> for Entry<'a> {
     type Error = anyhow::Error;
 
-    fn try_from(line: &'a Vec<u8>) -> Result<Self> {
+    fn try_from(line: &'a [u8]) -> Result<Self> {
         let groups = line.split_str(" -- ").collect::<Vec<_>>();
 
         if groups.len() != 2 {
