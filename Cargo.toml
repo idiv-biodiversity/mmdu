@@ -1,6 +1,6 @@
 [package]
 name = "mmdu"
-version = "0.5.1"
+version = "0.5.2"
 authors = ["Christian Krause <christian.krause@mailbox.org>"]
 description = "disk usage for IBM Storage Scale file systems"
 license = "GPL-3.0-or-later"
