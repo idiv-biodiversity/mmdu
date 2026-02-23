@@ -23,7 +23,7 @@ bytesize = "2"
 env_logger = { version = "0.11", optional = true }
 libc = "0.2"
 log = { version = "0.4", optional = true }
-pwd-grp = "0.1"
+pwd-grp = "1"
 tempfile = "3"
 
 [dependencies.clap]
