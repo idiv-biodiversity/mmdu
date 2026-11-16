@@ -6,7 +6,6 @@ description = "disk usage for IBM Storage Scale file systems"
 license = "GPL-3.0-or-later"
 readme = "README.md"
 documentation = "https://github.com/idiv-biodiversity/mmdu"
-homepage = "https://github.com/idiv-biodiversity/mmdu"
 repository = "https://github.com/idiv-biodiversity/mmdu"
 keywords = ["disk", "usage", "gpfs", "spectrum-scale", "storage-scale"]
 categories = ["command-line-utilities", "filesystem"]
